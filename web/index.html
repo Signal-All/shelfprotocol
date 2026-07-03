@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenShelf — robots.txt for commerce</title>
+<style>
+  :root{
+    --bg:#0a0e1a; --panel:#121829; --ink:#e7ecf5; --mut:#8b97b0;
+    --acc:#5b8cff; --acc2:#37e0a6; --line:#222b42; --code:#0d1424;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(1200px 600px at 70% -10%,#16203a 0,var(--bg) 60%);color:var(--ink)}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  header{padding:90px 0 50px;text-align:center}
+  .badge{display:inline-block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--acc2);border:1px solid var(--line);border-radius:999px;padding:6px 14px;margin-bottom:24px}
+  h1{font-size:54px;line-height:1.05;margin:0 0 16px;letter-spacing:-1.5px}
+  h1 .grad{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;
+    background-clip:text;color:transparent}
+  .sub{font-size:21px;color:var(--mut);max-width:640px;margin:0 auto 34px}
+  .cta{display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .btn{display:inline-block;padding:13px 22px;border-radius:11px;text-decoration:none;font-weight:600}
+  .btn.primary{background:var(--acc);color:#07101f}
+  .btn.ghost{border:1px solid var(--line);color:var(--ink)}
+  section{padding:46px 0;border-top:1px solid var(--line)}
+  h2{font-size:28px;letter-spacing:-.5px;margin:0 0 22px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
+  .card h3{margin:0 0 8px;font-size:17px}
+  .card p{margin:0;color:var(--mut);font-size:15px}
+  .num{font-size:13px;color:var(--acc2);font-weight:700;letter-spacing:.1em}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px;
+    overflow:auto;font:14px/1.55 "SF Mono",Menlo,Consolas,monospace;color:#cfe0ff}
+  .tok-c{color:#6b7790}.tok-k{color:#c792ea}.tok-s{color:#c3e88d}.tok-f{color:#82aaff}
+  .flow{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px}
+  .node{flex:1;min-width:180px;text-align:center}
+  .node b{display:block;font-size:16px;margin-bottom:4px}
+  .node span{color:var(--mut);font-size:14px}
+  .arrow{color:var(--acc);font-size:24px;font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td,th{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--mut);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+  .money td:first-child{color:var(--acc2);font-weight:700;white-space:nowrap}
+  footer{padding:50px 0 80px;color:var(--mut);text-align:center;font-size:14px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}h1{font-size:40px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="badge">OpenShelf · v0.1 open standard</div>
+    <h1>The directory agents check<br><span class="grad">before they buy.</span></h1>
+    <p class="sub">Merchants publish one small file. Agents make one lookup. OpenShelf is
+      <strong>robots.txt for commerce</strong> — the handshake layer between AI agents and the web.</p>
+    <div class="cta">
+      <a class="btn primary" href="#start">Get listed free</a>
+      <a class="btn ghost" href="#dev">Add it to your agent</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>How it works</h2>
+    <div class="flow">
+      <div class="node"><b>Merchant</b><span>publishes <code>shelf.json</code></span></div>
+      <div class="arrow">→</div>
+      <div class="node"><b>OpenShelf</b><span>verifies &amp; indexes it</span></div>
+      <div class="arrow">→</div>
+      <div class="node"><b>Agent</b><span>looks up, then buys safely</span></div>
+    </div>
+  </section>
+
+  <section id="dev">
+    <h2>One line in your agent</h2>
+    <pre><span class="tok-k">from</span> openshelf <span class="tok-k">import</span> lookup, can_buy
+
+profile = <span class="tok-f">lookup</span>(<span class="tok-s">"acme-coffee.example"</span>)
+ok, why = <span class="tok-f">can_buy</span>(profile, amount_usd=<span class="tok-s">40</span>)   <span class="tok-c"># honors the merchant's declared limits</span>
+<span class="tok-c"># → (True, "OK: $40.00 is within the $250.00 autonomous limit.")</span></pre>
+    <p style="color:var(--mut)">The merchant declares its spending limits and rules. Your agent honors them.
+      That contract is what makes autonomous buying safe enough to actually ship.</p>
+  </section>
+
+  <section>
+    <h2>Why it spreads on its own</h2>
+    <div class="grid">
+      <div class="card"><div class="num">MERCHANTS</div><h3>Can't afford to be invisible</h3>
+        <p>If agents can't see you, you don't exist to AI shoppers. Listing is free and takes 5 minutes.</p></div>
+      <div class="card"><div class="num">DEVELOPERS</div><h3>Cheaper than scraping</h3>
+        <p>One reliable lookup beats parsing broken websites. Drop it in once; every agent inherits it.</p></div>
+      <div class="card"><div class="num">THE INDEX</div><h3>Compounds</h3>
+        <p>More merchants → agents prefer it → more developers depend on it → more merchants join.</p></div>
+    </div>
+  </section>
+
+  <section id="start">
+    <h2>Get listed</h2>
+    <pre><span class="tok-c"># 1. host this at https://yourdomain.com/.well-known/shelf.json</span>
+{
+  <span class="tok-s">"shelf_version"</span>: <span class="tok-s">"0.1"</span>,
+  <span class="tok-s">"merchant"</span>: { <span class="tok-s">"name"</span>: <span class="tok-s">"Your Store"</span>, <span class="tok-s">"domain"</span>: <span class="tok-s">"yourdomain.com"</span> },
+  <span class="tok-s">"agent_policy"</span>: { <span class="tok-s">"agents_allowed"</span>: <span class="tok-k">true</span>, <span class="tok-s">"max_autonomous_order_usd"</span>: <span class="tok-s">250</span> },
+  <span class="tok-s">"checkout"</span>: { <span class="tok-s">"protocol"</span>: <span class="tok-s">"AP2"</span> }
+}
+
+<span class="tok-c"># 2. register it</span>
+<span class="tok-f">curl</span> -X POST https://api.openshelf.dev/v1/merchants -d @shelf.json</pre>
+  </section>
+
+  <section>
+    <h2>How OpenShelf makes money</h2>
+    <table class="money">
+      <tr><th>Layer</th><th>What it is</th></tr>
+      <tr><td>Free</td><td>Registration &amp; lookups. Drives scale and adoption.</td></tr>
+      <tr><td>Verified</td><td>Merchants pay for a verified badge that unlocks autonomous purchases (higher conversion).</td></tr>
+      <tr><td>Metered API</td><td>Per-lookup pricing above a free threshold — usage-based, like Stripe/Twilio.</td></tr>
+      <tr><td>Enterprise</td><td>Priority placement, catalog feeds, reputation data for retailers &amp; payment networks.</td></tr>
+    </table>
+  </section>
+
+  <footer>
+    OpenShelf · an open standard. Fork it, extend it, embed it — the goal is for
+    <code>shelf.json</code> to be as boring and universal as <code>robots.txt</code>.
+  </footer>
+
+</div>
+</body>
+</html>
