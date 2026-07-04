@@ -21,9 +21,11 @@ from typing import Optional
 
 import dns.exception
 import dns.resolver
-from fastapi import FastAPI, Header, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from . import ratelimit
 from .db import DB
 
 # Set OPENSHELF_DNS_CHECK=off to skip the DNS TXT lookup in /verify — for local
@@ -38,6 +40,32 @@ app = FastAPI(
 )
 
 db = DB()
+
+limiter = ratelimit.RateLimiter()
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    if ratelimit.ENABLED and request.url.path.startswith("/v1/"):
+        if request.method == "POST":
+            kind, limit = "write", ratelimit.WRITES_PER_MIN
+        else:
+            kind, limit = "read", ratelimit.READS_PER_MIN
+        client_ip = request.client.host if request.client else "unknown"
+        allowed, retry_after = limiter.check(client_ip, kind, limit)
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                headers={"Retry-After": str(retry_after)},
+                content={
+                    "detail": {
+                        "error": "rate_limited",
+                        "limit_per_min": limit,
+                        "retry_after_seconds": retry_after,
+                    }
+                },
+            )
+    return await call_next(request)
 
 
 # ---------- Schemas (mirror the shelf.json spec) ----------
@@ -98,6 +126,10 @@ def root():
         "version": "0.1.0",
         "spec": "robots.txt for commerce",
         "merchants_indexed": db.count(),
+        "rate_limits": (
+            {"reads_per_min": ratelimit.READS_PER_MIN, "writes_per_min": ratelimit.WRITES_PER_MIN}
+            if ratelimit.ENABLED else "disabled"
+        ),
         "endpoints": {
             "register": "POST /v1/merchants",
             "lookup": "GET /v1/merchants/{domain}",

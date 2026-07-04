@@ -94,6 +94,14 @@ autonomously (see below).
 > server with `OPENSHELF_DNS_CHECK=off` to skip the TXT lookup (the api_key
 > check still applies).
 
+## Rate limits
+
+The registry rate-limits per client IP on `/v1/*`: **120 reads/min** (lookup,
+search, stats) and **10 writes/min** (register, verify). Exceeding a limit
+returns `429` with a `Retry-After` header. Tune with
+`OPENSHELF_RATE_LIMIT_READS_PER_MIN` / `OPENSHELF_RATE_LIMIT_WRITES_PER_MIN`,
+or disable for local demos and tests with `OPENSHELF_RATE_LIMIT=off`.
+
 ## The one line developers add
 
 ```python
@@ -119,7 +127,7 @@ world, which is the bet.
 ## The roadmap that turns this into a moat
 
 - **v0 (this repo):** the spec + registry + SDK + demo. Prove the loop.
-- **v1:** product-catalog feeds, rate limiting, hosted API. (Real DNS-TXT verification: done.)
+- **v1:** product-catalog feeds, hosted API. (Real DNS-TXT verification, rate limiting: done.)
 - **v2:** a *reputation* layer — log transaction outcomes, score merchants. Once
   agents check reputation before buying, the data itself becomes the moat.
 - **v3:** become the default lookup baked into agent frameworks (LangChain,
