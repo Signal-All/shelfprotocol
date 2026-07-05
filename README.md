@@ -72,6 +72,9 @@ curl -X POST http://localhost:8080/v1/merchants \
     "checkout": {
       "protocol": "AP2",
       "endpoint": "https://acme-coffee.example/agent/checkout"
+    },
+    "catalog": {
+      "feed_url": "https://acme-coffee.example/.well-known/shelf-catalog.json"
     }
   }'
 ```
@@ -104,8 +107,10 @@ or disable for local demos and tests with `OPENSHELF_RATE_LIMIT=off`.
 
 ## Catalog feeds (products, not just merchants)
 
-Host a `shelf-catalog.json` at the URL you declared in `catalog.feed_url` (see
-`spec/shelf-catalog.json.example`), then ask the registry to crawl it:
+Publishing a catalog is two steps: declare a `catalog.feed_url` when you
+register (as in the example above), and host a `shelf-catalog.json` file at
+that URL (copy `spec/shelf-catalog.json.example` as a starting point). Then
+ask the registry to crawl it:
 
 ```bash
 curl -X POST http://localhost:8080/v1/merchants/acme-coffee.example/catalog/refresh \
