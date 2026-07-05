@@ -49,3 +49,9 @@ Confirmed: 2026-07-04
 Was: the README's registration curl example declared no `catalog.feed_url`, while the catalog section referred to "the URL you declared in catalog.feed_url" — a developer following the register example had never declared one, and there is no update endpoint to add it later. A cold walk-through (Phase 3) flagged catalog publishing as CONFUSING.
 Now required: the README "Register a merchant" curl example must include a `catalog.feed_url` field, and the catalog section must state the two-step publish flow (declare feed_url at registration, host shelf-catalog.json at that URL, then POST /catalog/refresh).
 Phase 0 check: `grep -q '"feed_url"' README.md && grep -q "Publishing a catalog is two steps" README.md`.
+
+## Rule 7: merchant record mutations must be atomic via DB.transform
+Confirmed: 2026-07-04
+Was: `update_merchant` (and `verify_merchant`, `refresh_catalog`) did `db.get(domain)` then `db.upsert(domain, record)` as separate lock acquisitions, holding the stale read across slow I/O. An update racing /verify could write back a stale trust block, silently un-verifying a merchant; catalog counters and lookup counts could likewise be clobbered.
+Now required: any endpoint that mutates an existing merchant record must apply its mutation through `DB.transform(domain, fn)` (single-lock read-modify-write against the freshest record), with slow I/O (DNS lookups, feed fetches) performed before the transform. `db.upsert` in server/main.py is allowed only for creating records in `register_merchant`.
+Phase 0 check: `grep -q "def transform" server/db.py` and `grep -c "db.upsert(" server/main.py` returns 1 (the register_merchant create path only).

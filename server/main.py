@@ -205,15 +205,18 @@ def update_merchant(
     if body_domain and body_domain != domain:
         raise HTTPException(400, "merchant.domain is immutable — register the new domain instead")
 
-    updated = doc.model_dump()
-    updated["merchant"]["domain"] = domain
-    updated["trust"] = record["trust"]
-    updated["_meta"] = record["_meta"]
-    # item_count/updated_at are registry-owned: set by /catalog/refresh, not the merchant.
-    old_catalog = record.get("catalog", {})
-    updated["catalog"]["item_count"] = old_catalog.get("item_count", 0)
-    updated["catalog"]["updated_at"] = old_catalog.get("updated_at", "")
-    db.upsert(domain, updated)
+    def apply(current: dict) -> dict:
+        updated = doc.model_dump()
+        updated["merchant"]["domain"] = domain
+        updated["trust"] = current["trust"]
+        updated["_meta"] = current["_meta"]
+        # item_count/updated_at are registry-owned: set by /catalog/refresh, not the merchant.
+        old_catalog = current.get("catalog", {})
+        updated["catalog"]["item_count"] = old_catalog.get("item_count", 0)
+        updated["catalog"]["updated_at"] = old_catalog.get("updated_at", "")
+        return updated
+
+    updated = db.transform(domain, apply)
     return {"domain": domain, "status": "updated", "verified_domain": updated["trust"]["verified_domain"]}
 
 
@@ -288,9 +291,12 @@ def verify_merchant(domain: str, x_api_key: str = Header(..., description="api_k
                 },
             )
 
-    record["trust"]["verified_domain"] = True
-    record.setdefault("_meta", {})["verified_at"] = time.time()
-    db.upsert(domain, record)
+    def apply(current: dict) -> dict:
+        current["trust"]["verified_domain"] = True
+        current.setdefault("_meta", {})["verified_at"] = time.time()
+        return current
+
+    db.transform(domain, apply)
     return {"domain": domain, "verified_domain": True, "method": "dns-txt"}
 
 
@@ -321,9 +327,13 @@ def refresh_catalog(domain: str, x_api_key: str = Header(..., description="api_k
         )
 
     db.set_catalog(domain, items)
-    record.setdefault("catalog", {})["item_count"] = len(items)
-    record["catalog"]["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    db.upsert(domain, record)
+
+    def apply(current: dict) -> dict:
+        current.setdefault("catalog", {})["item_count"] = len(items)
+        current["catalog"]["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        return current
+
+    db.transform(domain, apply)
     return {"domain": domain, "items_indexed": len(items)}
 
 
