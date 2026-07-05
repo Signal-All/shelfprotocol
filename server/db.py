@@ -105,6 +105,21 @@ class DB:
             record["_meta"]["lookups"] = record["_meta"].get("lookups", 0) + 1
             self._upsert_unlocked(domain, record)
 
+    def transform(self, domain: str, fn) -> Optional[dict]:
+        """Atomic read-modify-write: apply fn to the freshest record under one
+        lock and persist the result. Returns the new record, or None if the
+        domain is unknown. Use this instead of get()+upsert() whenever the
+        mutation must not clobber concurrent writes."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT blob FROM merchants WHERE domain = ?", (domain,)
+            ).fetchone()
+            if not row:
+                return None
+            record = fn(json.loads(row["blob"]))
+            self._upsert_unlocked(domain, record)
+            return record
+
     def count(self) -> int:
         with self._lock:
             return self._conn.execute("SELECT COUNT(*) AS c FROM merchants").fetchone()["c"]
