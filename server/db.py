@@ -38,6 +38,21 @@ class DB:
                 )
                 """
             )
+            self._conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS products (
+                    domain      TEXT,
+                    sku         TEXT,
+                    name        TEXT,
+                    description TEXT,
+                    categories  TEXT,
+                    price_usd   REAL,
+                    url         TEXT,
+                    in_stock    INTEGER,
+                    PRIMARY KEY (domain, sku)
+                )
+                """
+            )
             self._conn.commit()
 
     def _upsert_unlocked(self, domain: str, record: dict):
@@ -120,14 +135,83 @@ class DB:
             rows = self._conn.execute(sql, params).fetchall()
         return [json.loads(r["blob"]) for r in rows]
 
+    def set_catalog(self, domain: str, items: list[dict]):
+        """Replace a merchant's cached catalog with freshly validated items."""
+        rows = [
+            (domain, it["sku"], it["name"], it["description"],
+             " ".join(it["categories"]), it["price_usd"], it["url"],
+             1 if it["in_stock"] else 0)
+            for it in items
+        ]
+        with self._lock:
+            self._conn.execute("DELETE FROM products WHERE domain = ?", (domain,))
+            self._conn.executemany(
+                "INSERT INTO products VALUES (?, ?, ?, ?, ?, ?, ?, ?)", rows
+            )
+            self._conn.commit()
+
+    @staticmethod
+    def _product_row(r) -> dict:
+        return {
+            "domain": r["domain"], "sku": r["sku"], "name": r["name"],
+            "description": r["description"],
+            "categories": r["categories"].split() if r["categories"] else [],
+            "price_usd": r["price_usd"], "url": r["url"],
+            "in_stock": bool(r["in_stock"]),
+        }
+
+    def get_catalog(self, domain: str, q=None, limit=100) -> list[dict]:
+        clauses, params = ["domain = ?"], [domain]
+        if q:
+            clauses.append("(LOWER(name) LIKE ? OR LOWER(description) LIKE ? OR LOWER(categories) LIKE ?)")
+            like = f"%{q.lower()}%"
+            params += [like, like, like]
+        params.append(limit)
+        sql = f"SELECT * FROM products WHERE {' AND '.join(clauses)} ORDER BY sku LIMIT ?"
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [self._product_row(r) for r in rows]
+
+    def search_products(self, q=None, category=None, verified=None,
+                        in_stock=None, limit=20) -> list[dict]:
+        clauses, params = [], []
+        if q:
+            clauses.append("(LOWER(p.name) LIKE ? OR LOWER(p.description) LIKE ? OR LOWER(p.categories) LIKE ?)")
+            like = f"%{q.lower()}%"
+            params += [like, like, like]
+        if category:
+            clauses.append("LOWER(p.categories) LIKE ?")
+            params.append(f"%{category.lower()}%")
+        if verified is True:
+            clauses.append("m.verified = 1")
+        if in_stock is True:
+            clauses.append("p.in_stock = 1")
+        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        sql = (
+            "SELECT p.*, m.name AS merchant_name, m.verified AS merchant_verified "
+            f"FROM products p JOIN merchants m ON p.domain = m.domain {where} "
+            "ORDER BY m.verified DESC, p.price_usd ASC LIMIT ?"
+        )
+        params.append(limit)
+        with self._lock:
+            rows = self._conn.execute(sql, params).fetchall()
+        return [
+            {**self._product_row(r),
+             "merchant_name": r["merchant_name"],
+             "merchant_verified": bool(r["merchant_verified"])}
+            for r in rows
+        ]
+
     def stats(self) -> dict:
         with self._lock:
             total = self._conn.execute("SELECT COUNT(*) AS c FROM merchants").fetchone()["c"]
             verified = self._conn.execute("SELECT COUNT(*) AS c FROM merchants WHERE verified=1").fetchone()["c"]
+            products = self._conn.execute("SELECT COUNT(*) AS c FROM products").fetchone()["c"]
             rows = self._conn.execute("SELECT blob FROM merchants").fetchall()
         lookups = sum(json.loads(r["blob"]).get("_meta", {}).get("lookups", 0) for r in rows)
         return {
             "merchants_indexed": total,
             "verified_merchants": verified,
+            "products_indexed": products,
             "total_agent_lookups": lookups,
         }
