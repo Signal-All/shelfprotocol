@@ -88,6 +88,10 @@ curl -X POST http://localhost:8080/v1/merchants/acme-coffee.example/verify \
   -H "X-Api-Key: $OPENSHELF_API_KEY"
 ```
 
+To change your listing later (limits, checkout endpoint, feed URL — anything
+except the domain itself), send the same body to `PUT /v1/merchants/<domain>`
+with your `X-Api-Key` header. Verification status survives updates.
+
 The registry looks up `_openshelf.<domain>` in DNS and confirms the TXT record
 carries your verification token. On success it flips `trust.verified_domain` to
 `true`, which is required before `can_buy()` will allow an agent to purchase

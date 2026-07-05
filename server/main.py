@@ -47,7 +47,7 @@ limiter = ratelimit.RateLimiter()
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     if ratelimit.ENABLED and request.url.path.startswith("/v1/"):
-        if request.method == "POST":
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
             kind, limit = "write", ratelimit.WRITES_PER_MIN
         else:
             kind, limit = "read", ratelimit.READS_PER_MIN
@@ -132,6 +132,7 @@ def root():
         ),
         "endpoints": {
             "register": "POST /v1/merchants",
+            "update": "PUT /v1/merchants/{domain} (X-Api-Key)",
             "lookup": "GET /v1/merchants/{domain}",
             "search": "GET /v1/search?q=&category=&protocol=&verified=",
             "verify": "POST /v1/merchants/{domain}/verify (checks the _openshelf DNS TXT record)",
@@ -153,7 +154,7 @@ def register_merchant(doc: ShelfDoc):
     if db.get(domain):
         raise HTTPException(
             409,
-            "domain already registered — authenticate with your api_key to update your listing",
+            "domain already registered — use PUT /v1/merchants/{domain} with your X-Api-Key to update your listing",
         )
 
     token = "openshelf-verify=" + secrets.token_urlsafe(16)
@@ -180,6 +181,40 @@ def register_merchant(doc: ShelfDoc):
         api_key=api_key,
         message="Indexed. Add the DNS TXT record then POST /verify to get verified_domain:true.",
     )
+
+
+@app.put("/v1/merchants/{domain}", tags=["merchant"])
+def update_merchant(
+    domain: str,
+    doc: ShelfDoc,
+    x_api_key: str = Header(..., description="api_key returned at registration"),
+):
+    """
+    Update your listing. Replaces the merchant-declared parts (merchant,
+    agent_policy, checkout, catalog.feed_url); registry-owned state (trust,
+    verification, lookup counters) is preserved. The domain itself is immutable.
+    """
+    domain = domain.lower().strip()
+    record = db.get(domain)
+    if not record:
+        raise HTTPException(404, "merchant not registered")
+    stored_hash = record.get("_meta", {}).get("api_key_hash", "")
+    if hashlib.sha256(x_api_key.encode()).hexdigest() != stored_hash:
+        raise HTTPException(401, "invalid api_key")
+    body_domain = doc.merchant.domain.lower().strip()
+    if body_domain and body_domain != domain:
+        raise HTTPException(400, "merchant.domain is immutable — register the new domain instead")
+
+    updated = doc.model_dump()
+    updated["merchant"]["domain"] = domain
+    updated["trust"] = record["trust"]
+    updated["_meta"] = record["_meta"]
+    # item_count/updated_at are registry-owned: set by /catalog/refresh, not the merchant.
+    old_catalog = record.get("catalog", {})
+    updated["catalog"]["item_count"] = old_catalog.get("item_count", 0)
+    updated["catalog"]["updated_at"] = old_catalog.get("updated_at", "")
+    db.upsert(domain, updated)
+    return {"domain": domain, "status": "updated", "verified_domain": updated["trust"]["verified_domain"]}
 
 
 @app.get("/v1/merchants/{domain}", tags=["agent"])
