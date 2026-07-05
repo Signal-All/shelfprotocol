@@ -49,6 +49,33 @@ def search(q: str = None, category: str = None, protocol: str = None,
         return []
 
 
+def catalog(domain: str, q: str = None, base_url: str = None) -> list[dict]:
+    """Return a merchant's cached catalog items, optionally filtered by q."""
+    base = base_url or BASE_URL
+    params = {"q": q} if q else {}
+    try:
+        r = requests.get(f"{base}/v1/merchants/{domain}/catalog", params=params, timeout=TIMEOUT)
+        r.raise_for_status()
+        return r.json().get("items", [])
+    except requests.RequestException:
+        return []
+
+
+def products(q: str = None, category: str = None, verified: bool = None,
+             in_stock: bool = None, base_url: str = None) -> list[dict]:
+    """Search products across all merchants. Verified merchants rank first."""
+    base = base_url or BASE_URL
+    params = {k: v for k, v in {
+        "q": q, "category": category, "verified": verified, "in_stock": in_stock
+    }.items() if v is not None}
+    try:
+        r = requests.get(f"{base}/v1/products", params=params, timeout=TIMEOUT)
+        r.raise_for_status()
+        return r.json().get("results", [])
+    except requests.RequestException:
+        return []
+
+
 def can_buy(profile: dict, amount_usd: float, require_verified: bool = True) -> tuple[bool, str]:
     """
     Decide whether an agent may autonomously purchase from this merchant.

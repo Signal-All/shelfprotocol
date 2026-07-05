@@ -1,0 +1,34 @@
+{
+  "catalog_version": "0.1",
+  "domain": "acme-coffee.example",
+  "updated_at": "2026-07-04T00:00:00Z",
+  "items": [
+    {
+      "sku": "ACME-ESP-12OZ",
+      "name": "Espresso Blend, 12oz whole bean",
+      "description": "Dark roast espresso blend. Chocolate and cherry notes.",
+      "categories": ["food.beverages.coffee"],
+      "price_usd": 18.5,
+      "url": "https://acme-coffee.example/products/espresso-blend",
+      "in_stock": true
+    },
+    {
+      "sku": "ACME-DECAF-12OZ",
+      "name": "Swiss Water Decaf, 12oz whole bean",
+      "description": "Full flavor, no caffeine. Swiss Water processed.",
+      "categories": ["food.beverages.coffee"],
+      "price_usd": 19.0,
+      "url": "https://acme-coffee.example/products/swiss-water-decaf",
+      "in_stock": true
+    },
+    {
+      "sku": "ACME-SUB-MONTHLY",
+      "name": "Monthly roaster's choice subscription",
+      "description": "One 12oz bag per month, roaster's pick.",
+      "categories": ["food.beverages.coffee", "subscriptions"],
+      "price_usd": 22.0,
+      "url": "https://acme-coffee.example/subscribe",
+      "in_stock": true
+    }
+  ]
+}

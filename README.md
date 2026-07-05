@@ -72,6 +72,9 @@ curl -X POST http://localhost:8080/v1/merchants \
     "checkout": {
       "protocol": "AP2",
       "endpoint": "https://acme-coffee.example/agent/checkout"
+    },
+    "catalog": {
+      "feed_url": "https://acme-coffee.example/.well-known/shelf-catalog.json"
     }
   }'
 ```
@@ -102,6 +105,29 @@ returns `429` with a `Retry-After` header. Tune with
 `OPENSHELF_RATE_LIMIT_READS_PER_MIN` / `OPENSHELF_RATE_LIMIT_WRITES_PER_MIN`,
 or disable for local demos and tests with `OPENSHELF_RATE_LIMIT=off`.
 
+## Catalog feeds (products, not just merchants)
+
+Publishing a catalog is two steps: declare a `catalog.feed_url` when you
+register (as in the example above), and host a `shelf-catalog.json` file at
+that URL (copy `spec/shelf-catalog.json.example` as a starting point). Then
+ask the registry to crawl it:
+
+```bash
+curl -X POST http://localhost:8080/v1/merchants/acme-coffee.example/catalog/refresh \
+  -H "X-Api-Key: $OPENSHELF_API_KEY"
+```
+
+The fetch is guarded (HTTPS to a public host only, no redirects, 5s timeout,
+1MB / 1000-item caps; `OPENSHELF_CATALOG_FETCH_GUARD=off` relaxes the
+scheme/IP checks for local demos). Agents then query the cache:
+
+```python
+from openshelf import catalog, products
+
+catalog("acme-coffee.example", q="decaf")   # one merchant's items
+products(q="espresso", verified=True)       # across all merchants, verified first
+```
+
 ## The one line developers add
 
 ```python
@@ -127,7 +153,7 @@ world, which is the bet.
 ## The roadmap that turns this into a moat
 
 - **v0 (this repo):** the spec + registry + SDK + demo. Prove the loop.
-- **v1:** product-catalog feeds, hosted API. (Real DNS-TXT verification, rate limiting: done.)
+- **v1:** hosted API. (Real DNS-TXT verification, rate limiting, product-catalog feeds: done.)
 - **v2:** a *reputation* layer — log transaction outcomes, score merchants. Once
   agents check reputation before buying, the data itself becomes the moat.
 - **v3:** become the default lookup baked into agent frameworks (LangChain,

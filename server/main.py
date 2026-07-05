@@ -25,7 +25,7 @@ from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from . import ratelimit
+from . import catalog, ratelimit
 from .db import DB
 
 # Set OPENSHELF_DNS_CHECK=off to skip the DNS TXT lookup in /verify — for local
@@ -135,6 +135,9 @@ def root():
             "lookup": "GET /v1/merchants/{domain}",
             "search": "GET /v1/search?q=&category=&protocol=&verified=",
             "verify": "POST /v1/merchants/{domain}/verify (checks the _openshelf DNS TXT record)",
+            "catalog_refresh": "POST /v1/merchants/{domain}/catalog/refresh (crawls your shelf-catalog.json)",
+            "catalog": "GET /v1/merchants/{domain}/catalog?q=",
+            "products": "GET /v1/products?q=&category=&verified=&in_stock=",
             "stats": "GET /v1/stats",
         },
     }
@@ -254,6 +257,68 @@ def verify_merchant(domain: str, x_api_key: str = Header(..., description="api_k
     record.setdefault("_meta", {})["verified_at"] = time.time()
     db.upsert(domain, record)
     return {"domain": domain, "verified_domain": True, "method": "dns-txt"}
+
+
+@app.post("/v1/merchants/{domain}/catalog/refresh", tags=["merchant"])
+def refresh_catalog(domain: str, x_api_key: str = Header(..., description="api_key returned at registration")):
+    """
+    Crawl and cache the merchant's shelf-catalog.json from catalog.feed_url.
+    The fetch is guarded: HTTPS to a public host only, no redirects, 5s/1MB caps.
+    """
+    domain = domain.lower().strip()
+    record = db.get(domain)
+    if not record:
+        raise HTTPException(404, "merchant not registered")
+    stored_hash = record.get("_meta", {}).get("api_key_hash", "")
+    if hashlib.sha256(x_api_key.encode()).hexdigest() != stored_hash:
+        raise HTTPException(401, "invalid api_key")
+    feed_url = record.get("catalog", {}).get("feed_url", "")
+    if not feed_url:
+        raise HTTPException(400, "no catalog.feed_url in your shelf.json — update your listing first")
+
+    try:
+        items = catalog.fetch(feed_url)
+    except catalog.CatalogError as exc:
+        raise HTTPException(
+            422,
+            {"domain": domain, "feed_url": feed_url, "reason": exc.reason,
+             "advice": "Fix the feed and retry. See spec/shelf-catalog.json.example."},
+        )
+
+    db.set_catalog(domain, items)
+    record.setdefault("catalog", {})["item_count"] = len(items)
+    record["catalog"]["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    db.upsert(domain, record)
+    return {"domain": domain, "items_indexed": len(items)}
+
+
+@app.get("/v1/merchants/{domain}/catalog", tags=["agent"])
+def get_catalog(
+    domain: str,
+    q: Optional[str] = Query(None, description="free-text match on name/description/categories"),
+    limit: int = 100,
+):
+    """Serve a merchant's cached catalog items."""
+    domain = domain.lower().strip()
+    if not db.get(domain):
+        raise HTTPException(404, "merchant not registered")
+    items = db.get_catalog(domain, q=q, limit=limit)
+    return {"domain": domain, "count": len(items), "items": items}
+
+
+@app.get("/v1/products", tags=["agent"])
+def search_products(
+    q: Optional[str] = Query(None, description="free-text match on name/description/categories"),
+    category: Optional[str] = None,
+    verified: Optional[bool] = Query(None, description="only products from verified merchants"),
+    in_stock: Optional[bool] = Query(None, description="only in-stock products"),
+    limit: int = 20,
+):
+    """Search cached products across all merchants. Verified merchants rank first."""
+    results = db.search_products(
+        q=q, category=category, verified=verified, in_stock=in_stock, limit=limit
+    )
+    return {"count": len(results), "results": results}
 
 
 @app.get("/v1/search", tags=["agent"])

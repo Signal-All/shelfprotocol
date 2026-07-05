@@ -91,6 +91,45 @@ search and are eligible for autonomous (no-human) purchases.
 
 ---
 
+## Catalog feeds (how agents find actual products)
+
+A merchant can go beyond its profile and publish its products in a
+`shelf-catalog.json` feed hosted at the URL declared in `catalog.feed_url`
+(conventionally `https://<domain>/.well-known/shelf-catalog.json`):
+
+```json
+{
+  "catalog_version": "0.1",
+  "domain": "acme-coffee.example",
+  "updated_at": "2026-07-04T00:00:00Z",
+  "items": [
+    {
+      "sku": "ACME-ESP-12OZ",
+      "name": "Espresso Blend, 12oz whole bean",
+      "description": "Dark roast espresso blend.",
+      "categories": ["food.beverages.coffee"],
+      "price_usd": 18.5,
+      "url": "https://acme-coffee.example/products/espresso-blend",
+      "in_stock": true
+    }
+  ]
+}
+```
+
+`sku` and `name` are required per item; everything else is optional. Feeds are
+capped at 1000 items and 1MB.
+
+The Registry crawls and caches the feed when the merchant calls
+`POST /v1/merchants/{domain}/catalog/refresh` (authenticated with the
+registration api_key). The fetch enforces HTTPS to a publicly routable host,
+follows no redirects, and validates every item. Agents then query the cache:
+`GET /v1/merchants/{domain}/catalog` for one merchant, or `GET /v1/products?q=`
+to search products across all merchants.
+
+See `spec/shelf-catalog.json.example` for a complete feed.
+
+---
+
 ## Why this self-adopts
 
 - **Merchants publish** because being absent means being invisible to AI
