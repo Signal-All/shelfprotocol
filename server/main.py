@@ -132,6 +132,7 @@ def root():
         ),
         "endpoints": {
             "register": "POST /v1/merchants",
+            "claim": "POST /v1/merchants/{domain}/claim (take ownership of an imported listing)",
             "update": "PUT /v1/merchants/{domain} (X-Api-Key)",
             "lookup": "GET /v1/merchants/{domain}",
             "search": "GET /v1/search?q=&category=&protocol=&verified=",
@@ -151,7 +152,13 @@ def register_merchant(doc: ShelfDoc):
     if not domain or "." not in domain:
         raise HTTPException(400, "merchant.domain must be a valid domain")
 
-    if db.get(domain):
+    existing = db.get(domain)
+    if existing:
+        if not existing.get("_meta", {}).get("claimed", True):
+            raise HTTPException(
+                409,
+                "domain is already indexed but unclaimed — POST /v1/merchants/{domain}/claim to take ownership",
+            )
         raise HTTPException(
             409,
             "domain already registered — use PUT /v1/merchants/{domain} with your X-Api-Key to update your listing",
@@ -170,6 +177,7 @@ def register_merchant(doc: ShelfDoc):
         "verification_token": token,
         "api_key_hash": hashlib.sha256(api_key.encode()).hexdigest(),
         "lookups": 0,
+        "claimed": True,
     }
     db.upsert(domain, record)
 
@@ -180,6 +188,42 @@ def register_merchant(doc: ShelfDoc):
         verification_dns_record=f'_openshelf.{domain}  TXT  "{token}"',
         api_key=api_key,
         message="Indexed. Add the DNS TXT record then POST /verify to get verified_domain:true.",
+    )
+
+
+@app.post("/v1/merchants/{domain}/claim", response_model=RegisterResponse, tags=["merchant"])
+def claim_merchant(domain: str):
+    """
+    Start claiming an imported (unclaimed) listing. Issues credentials; the
+    claim completes only when /verify proves domain ownership via DNS TXT.
+    Calling claim again before verifying rotates the pending credentials —
+    only the real domain owner can ever finish, so rotation is harmless.
+    """
+    domain = domain.lower().strip()
+    record = db.get(domain)
+    if not record:
+        raise HTTPException(404, "domain not indexed — register it with POST /v1/merchants")
+    if record.get("_meta", {}).get("claimed", True):
+        raise HTTPException(409, "listing already claimed — its owner manages it with their api_key")
+
+    token = "openshelf-verify=" + secrets.token_urlsafe(16)
+    api_key = "osk_" + secrets.token_urlsafe(24)
+
+    def apply(current: dict) -> dict:
+        meta = current.setdefault("_meta", {})
+        meta["verification_token"] = token
+        meta["api_key_hash"] = hashlib.sha256(api_key.encode()).hexdigest()
+        meta["claim_requested_at"] = time.time()
+        return current
+
+    db.transform(domain, apply)
+    return RegisterResponse(
+        domain=domain,
+        status="claim_pending",
+        verification_token=token,
+        verification_dns_record=f'_openshelf.{domain}  TXT  "{token}"',
+        api_key=api_key,
+        message="Add the DNS TXT record then POST /verify to complete the claim and get verified_domain:true.",
     )
 
 
@@ -201,6 +245,8 @@ def update_merchant(
     stored_hash = record.get("_meta", {}).get("api_key_hash", "")
     if hashlib.sha256(x_api_key.encode()).hexdigest() != stored_hash:
         raise HTTPException(401, "invalid api_key")
+    if not record.get("_meta", {}).get("claimed", True):
+        raise HTTPException(403, "claim is pending — complete DNS verification (POST /verify) before editing the listing")
     body_domain = doc.merchant.domain.lower().strip()
     if body_domain and body_domain != domain:
         raise HTTPException(400, "merchant.domain is immutable — register the new domain instead")
@@ -220,6 +266,14 @@ def update_merchant(
     return {"domain": domain, "status": "updated", "verified_domain": updated["trust"]["verified_domain"]}
 
 
+def _public(record: dict) -> dict:
+    """Strip registry-internal state (credential hash, tokens, counters) from
+    a record before returning it to agents; surface only the claimed flag."""
+    view = {k: v for k, v in record.items() if k != "_meta"}
+    view["claimed"] = bool(record.get("_meta", {}).get("claimed", True))
+    return view
+
+
 @app.get("/v1/merchants/{domain}", tags=["agent"])
 def lookup_merchant(domain: str):
     """THE call an agent makes before transacting. Returns the merchant's agent profile."""
@@ -235,7 +289,7 @@ def lookup_merchant(domain: str):
             },
         )
     db.bump_lookup(domain)
-    return record
+    return _public(record)
 
 
 def _dns_txt_has_token(domain: str, token: str) -> tuple[bool, str]:
@@ -293,11 +347,13 @@ def verify_merchant(domain: str, x_api_key: str = Header(..., description="api_k
 
     def apply(current: dict) -> dict:
         current["trust"]["verified_domain"] = True
-        current.setdefault("_meta", {})["verified_at"] = time.time()
+        meta = current.setdefault("_meta", {})
+        meta["verified_at"] = time.time()
+        meta["claimed"] = True
         return current
 
     db.transform(domain, apply)
-    return {"domain": domain, "verified_domain": True, "method": "dns-txt"}
+    return {"domain": domain, "verified_domain": True, "claimed": True, "method": "dns-txt"}
 
 
 @app.post("/v1/merchants/{domain}/catalog/refresh", tags=["merchant"])
@@ -313,6 +369,8 @@ def refresh_catalog(domain: str, x_api_key: str = Header(..., description="api_k
     stored_hash = record.get("_meta", {}).get("api_key_hash", "")
     if hashlib.sha256(x_api_key.encode()).hexdigest() != stored_hash:
         raise HTTPException(401, "invalid api_key")
+    if not record.get("_meta", {}).get("claimed", True):
+        raise HTTPException(403, "claim is pending — complete DNS verification (POST /verify) before managing the catalog")
     feed_url = record.get("catalog", {}).get("feed_url", "")
     if not feed_url:
         raise HTTPException(400, "no catalog.feed_url in your shelf.json — update your listing first")
@@ -380,7 +438,7 @@ def search(
         q=q, category=category, protocol=protocol,
         verified=verified, max_order_usd=max_order_usd, limit=limit,
     )
-    return {"count": len(results), "results": results}
+    return {"count": len(results), "results": [_public(r) for r in results]}
 
 
 @app.get("/v1/stats", tags=["meta"])

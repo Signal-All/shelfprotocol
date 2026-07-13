@@ -27,6 +27,7 @@ agent  ──lookup──▶  OpenShelf Registry  ◀──publish──  mercha
 | `sdk/openshelf.py` | The one-line lookup client a developer drops into an agent. |
 | `demo/demo_agent.py` | A shopping agent that uses OpenShelf to decide what it's allowed to buy. |
 | `web/index.html` | Developer landing page. |
+| `tests/` | Test suites (`cd tests && for t in test_*.py; do python3 $t; done`). |
 
 ## Run it locally (90 seconds)
 
@@ -108,6 +109,26 @@ search, stats) and **10 writes/min** (register, verify). Exceeding a limit
 returns `429` with a `Retry-After` header. Tune with
 `OPENSHELF_RATE_LIMIT_READS_PER_MIN` / `OPENSHELF_RATE_LIMIT_WRITES_PER_MIN`,
 or disable for local demos and tests with `OPENSHELF_RATE_LIMIT=off`.
+
+## Seeding & claiming (solving the empty registry)
+
+The registry can pre-index stores from their public product feeds:
+
+```bash
+python -m server.importer domains.txt   # one store domain per line
+```
+
+Imported listings are **unclaimed**: discoverable in search, but inert —
+`verified_domain: false` and a $0 autonomous ceiling, so `can_buy()` refuses
+them. A merchant takes ownership of its listing with:
+
+```bash
+curl -X POST http://localhost:8080/v1/merchants/acme-coffee.example/claim
+```
+
+That returns an api_key and a DNS record; the claim completes when the
+`/verify` DNS check passes. Until then the listing can't be edited, so a
+claimant who doesn't control the domain's DNS can never control its listing.
 
 ## Catalog feeds (products, not just merchants)
 
