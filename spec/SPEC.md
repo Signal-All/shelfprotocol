@@ -89,6 +89,18 @@ _openshelf.<domain>  TXT  "openshelf-verify=<token>"
 The Registry checks this asynchronously. Verified merchants rank higher in
 search and are eligible for autonomous (no-human) purchases.
 
+### Unclaimed listings and claiming
+
+The Registry may index merchants from public data (e.g. a store's public
+product feed) before the merchant ever registers. Such listings are marked
+`"claimed": false` and are deliberately inert: `verified_domain` is false and
+`max_autonomous_order_usd` is 0, so no agent can spend anything autonomously.
+
+The merchant takes ownership with `POST /v1/merchants/{domain}/claim`, which
+issues credentials, and the claim completes only when the DNS TXT check above
+passes. Until then the listing cannot be edited — a claimant who cannot edit
+DNS for the domain can never control its listing.
+
 ---
 
 ## Catalog feeds (how agents find actual products)

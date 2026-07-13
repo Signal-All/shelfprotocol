@@ -21,6 +21,7 @@ GUARD_ENABLED = os.environ.get("OPENSHELF_CATALOG_FETCH_GUARD", "on").lower() no
 MAX_BYTES = 1_000_000
 MAX_ITEMS = 1000
 TIMEOUT_S = 5.0
+USER_AGENT = "OpenShelfBot/0.1 (+https://shelfprotocol.org)"
 
 
 class CatalogError(Exception):
@@ -54,7 +55,8 @@ def fetch(url: str) -> list[dict]:
     if GUARD_ENABLED:
         _assert_url_safe(url)
     try:
-        r = requests.get(url, timeout=TIMEOUT_S, allow_redirects=False, stream=True)
+        r = requests.get(url, timeout=TIMEOUT_S, allow_redirects=False, stream=True,
+                         headers={"User-Agent": USER_AGENT})
     except requests.RequestException as exc:
         raise CatalogError(f"fetch failed: {exc.__class__.__name__}")
     if r.status_code != 200:
