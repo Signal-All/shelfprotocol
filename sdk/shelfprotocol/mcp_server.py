@@ -75,19 +75,25 @@ def search(
 
 
 @server.tool()
-def can_buy(domain: str, amount_usd: float, require_verified: bool = True) -> dict:
+def can_buy(domain: str, amount_usd: float) -> dict:
     """Decide whether it's safe to autonomously buy from a merchant.
 
     Looks the merchant up and checks its declared agent_policy: whether it
-    allows agent purchases at all, whether its domain is verified (required
-    by default), and whether amount_usd is within its autonomous spending
-    ceiling. This is the safety check — always call it before checkout.
+    allows agent purchases at all, whether its domain is verified, and
+    whether amount_usd is within its autonomous spending ceiling. This is
+    the safety check — always call it before checkout.
+
+    Domain verification is always required here (unlike the raw SDK's
+    can_buy(), which takes a require_verified flag for callers who need to
+    opt out deliberately in their own code) — this tool exists specifically
+    for an agent to call autonomously, so there is no argument that weakens
+    the check for it.
 
     Returns {"allowed": bool, "reason": str}. When allowed is false, reason
     explains why (e.g. amount exceeds the merchant's ceiling) so the agent
     can decide whether to escalate to the user instead."""
     profile = _lookup(domain)
-    allowed, reason = _can_buy(profile, amount_usd, require_verified=require_verified)
+    allowed, reason = _can_buy(profile, amount_usd, require_verified=True)
     return {"allowed": allowed, "reason": reason}
 
 

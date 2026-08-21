@@ -51,6 +51,22 @@ body = json.loads(r.content[0].text)
 assert body["allowed"] is False, body
 print("PASS: can_buy tool composes lookup + can_buy, refuses over-ceiling and unknown merchants")
 
+# --- can_buy hardening: verification is not caller-overridable on this tool,
+# unlike the raw SDK's require_verified flag (gate finding F2) ---
+mcp_server._lookup = lambda domain: {
+    "merchant": {"name": "Unverified Co", "domain": "unverified.example"},
+    "agent_policy": {"agents_allowed": True, "max_autonomous_order_usd": 10_000},
+    "trust": {"verified_domain": False},
+}
+r = run(mcp_server.server.call_tool("can_buy", {"domain": "unverified.example", "amount_usd": 5}))
+body = json.loads(r.content[0].text)
+assert body["allowed"] is False and "not verified" in body["reason"], body
+import inspect
+assert "require_verified" not in inspect.signature(mcp_server.can_buy).parameters, (
+    "can_buy must not expose a caller-settable verification override on the MCP surface"
+)
+print("PASS: can_buy tool cannot be talked into skipping verification (no override parameter exists)")
+
 # --- search / catalog / products: pass-through with correct kwargs ---
 # list-returning tools: structured_content['result'] preserves the full list
 # shape reliably; content[0].text renders per-item (unwrapped for a single

@@ -194,6 +194,12 @@ Exposes `lookup`, `search`, `can_buy`, `catalog`, and `products` as tools —
 add this to Claude Desktop, Claude Code, or any other MCP client and it can
 check the registry before buying anything, without writing any code.
 
+The MCP tool's `can_buy(domain, amount_usd)` is stricter than the raw SDK's
+`can_buy(profile, amount_usd, require_verified=True)`: it has no
+`require_verified` argument at all, so a manipulated prompt can never talk
+an agent into skipping domain verification through this tool. Code you write
+yourself can still opt out deliberately with the SDK function directly.
+
 ## How it makes money
 
 1. **Free tier** — registration and lookups are free. This is how you get scale.

@@ -1,12 +1,12 @@
 # Shelf Protocol Gate Report
-Date: 2026-08-21
+Date: 2026-08-21 (second run)
 Judge: gpt-4o via OpenAI API (stateless calls — zero shared context per call)
 Gate procedure: /gate-openshelf (executed from .claude/commands/gate-openshelf.md)
-Scope note: this run gates branch `chore/railway-deploy-config` (PR #6) — deployment configuration only (`railway.json`, root `requirements.txt` pointer). No application code changed.
+Scope note: this run gates the PyPI packaging + MCP server (branch `feat/mcp-server-and-packaging`, PR #7): `sdk/shelfprotocol.py` restructured into a real package, root `pyproject.toml`, new `sdk/shelfprotocol/mcp_server.py` exposing five tools to any MCP client.
 
 ## VERDICT: PASS
 
-Phase 1 (against the new deploy files plus the standing server surface) returned zero findings. Phase 2 was the hardest cold-pass run yet: both strangers returned FAIL, repeatedly, entirely against **pre-existing application code this PR does not touch** — every finding was a misreading of long-established safe-by-design defaults, and every one was refuted with hard evidence and conceded. Phase 3 found the same previously-refuted false-positive walkthrough claim, quoted and conceded a third time. No code changes were required.
+This gate produced the project's second real code fix. Phase 1 raised one refutable SSRF claim and one MEDIUM worth taking seriously on its merits even though the underlying code had no live bug — `can_buy`'s verification check being caller-overridable on a tool specifically marketed as "the safety check an agent calls before spending money" was weaker defense-in-depth than the new agent-facing surface warranted, so it was tightened rather than just argued away. Both cold strangers PASS. Phase 3 found one real README gap (fixed) alongside a recurring false-positive claim.
 
 ---
 
@@ -16,50 +16,45 @@ None.
 ---
 
 ## Fixed
-None. This PR is deployment configuration only; nothing in the review produced a confirmed defect anywhere.
+
+- **F2 (MEDIUM) — `can_buy` MCP tool exposed a caller-settable `require_verified` argument.** Not a live bug (the merchant `profile` is always fetched fresh from the trusted registry server per call, never caller-supplied — there was no actual path to inject a falsified profile), but a real hardening opportunity specific to the new surface: this tool is explicitly documented as "the safety check — always call it before checkout," and an LLM-visible parameter capable of disabling that check is a weaker design than necessary for something meant to be invoked autonomously by an agent, where a manipulated prompt is a real threat model that doesn't apply to a developer writing code by hand.
+  Fix: `sdk/shelfprotocol/mcp_server.py` — `can_buy(domain, amount_usd, require_verified=True)` → `can_buy(domain, amount_usd)`, with `require_verified=True` now hardcoded in the internal call. The raw Python SDK's `can_buy()` is untouched and still accepts the flag for developers writing deliberate code directly; only the agent-facing MCP tool was tightened.
+  Verified: new test proves an unverified merchant with a $10,000 ceiling is still refused, and asserts via `inspect.signature` that `require_verified` is entirely absent from the tool's parameter schema (not just defaulted safely — structurally impossible to pass). Judge: `{"resolved": true}`. Ratchet Rule 9 added.
+
+- **Phase 3 step 4 (CONFUSING) — README never explained how the MCP tool's `can_buy` differs from the raw SDK's.** The difference existed only in the `mcp_server.py` docstring, not in the README a developer would actually read first. Fixed: added a paragraph to the "Use it from any MCP client" section explaining the stricter, non-overridable verification on the MCP tool. Judge: `{"resolved": true}`.
 
 ---
 
 ## Refuted
 
 ### Phase 1
-Zero findings against the new deploy files (`railway.json`, root `requirements.txt`) or the standing server surface.
-
-### Phase 2 — took three stateless evaluations to converge; documented in full given the unusual length
-**Cold pass 1, Stranger 1** — FAIL:
-- F1 (CRITICAL) "record['trust'] = {'verified_domain': False, ...} enables unverified autonomous purchase" — refuted: this is the safe INITIAL state; `can_buy()`'s `require_verified` defaults `True` and unconditionally refuses purchase while `verified_domain` is `False`. Conceded.
-- F2 (HIGH) "DNS rebinding vulnerability," evidence quoted was literally a *code comment describing the risk the surrounding pinning implementation was written to close* — refuted by walking through the actual pin/clear mechanism (already Ratchet Rule 8, gated with an automated test in PR #5). Conceded.
-
-**Rerun (per gate rule: a FAIL requires a fresh full rerun), Stranger 1 again** — FAIL:
-- Same conceptual claim restated against different lines (`AgentPolicy` default_factory, `trust.verified_domain: False` again) — refuted with the doubly-safe-default argument: `AgentPolicy`'s default `max_autonomous_order_usd` is `$0`, so even a hypothetical verification bypass still fails on `amount_usd > ceiling` for any positive purchase; independently, `verified_domain: False` still requires `can_buy()`'s verification gate to pass. Conceded.
-
-**Stranger 2** — FAIL:
-- F1 (CRITICAL): identical `verified_domain: False` misreading, third occurrence — refuted with the same evidence. Conceded.
-- F2 (HIGH) "API key stored as hash without salt" — a substantively different, legitimate-sounding claim, engaged on the merits rather than dismissed: salting defends against precomputation attacks (rainbow tables) on LOW-entropy, human-chosen secrets. The value hashed here (`secrets.token_urlsafe(24)`) has 192 bits of CSPRNG entropy — 2^192 possible values exceeds any physically realizable precomputation, so a salt adds no protection the token's own randomness doesn't already provide. Matches standard industry practice (Stripe, GitHub, AWS all store unsalted hashes of high-entropy random tokens). Conceded.
-
-**Assessment:** every CRITICAL/HIGH finding across all three evaluations reduced to the same two recurring misreadings — "a safe unverified/zero-ceiling default is a bypass" and "an unsalted hash is automatically weak regardless of the input's entropy" — with zero new distinct concerns and zero `new_evidence` ever supplied on defense. None of the flagged code is touched by this PR. Given the "do not retry a third [cycle]" bound and that further identical stateless calls were producing no new information, Phase 2 is recorded as satisfied via full refutation rather than a clean same-call PASS. This pattern (judge conflating safe defaults with bypasses, and password-hashing norms with high-entropy-token norms) is worth naming for future runs as a known false-positive shape, not a new risk.
+- **F1 (HIGH) — "SSRF via caller-controlled base_url"**: the quoted line is inside the SDK's own (pre-existing, previously-reviewed) functions, whose `base_url` parameter is for a developer's own code, not the new agent-facing surface. None of the five MCP tool functions accept or forward `base_url` to the underlying SDK calls (confirmed by `grep -n "base_url" sdk/shelfprotocol/mcp_server.py` returning zero matches) — every MCP-driven call falls through to the operator-configured `SHELF_URL`/`BASE_URL`, never something an MCP client can set. Conceded.
 
 ### Phase 3
-- Steps 3–4 (BLOCKER, third occurrence of this exact claim in this project's gate history): "README doesn't show how to get the profile for `can_buy`" — contradicted by the verbatim `profile = lookup(...)` / `can_buy(profile, amount_usd=40)` example in "The one line developers add." Conceded.
-- Steps 1–2 (MINOR): no action required.
+- Step 2 (BLOCKER, recurring false positive across this project's gate history): "README doesn't show how to register a merchant or call can_buy" — contradicted by the existing "Register a merchant" curl example and "The one line developers add" `lookup`/`can_buy` snippet, both already present and unchanged by this PR. Conceded.
+- Steps 1, 3 (MINOR): wants numbered steps rather than prose sections — noted, no action required.
 
 ---
 
 ## Cold pass results
-Stranger 1: **PASS** (after refutation — see above; FAIL on both attempts, fully conceded)
-Stranger 2: **PASS** (after refutation — see above; FAIL, fully conceded)
+Stranger 1: **PASS**
+- MEDIUM: DNS lookup has a bounded timeout, described as risking "false negatives in domain verification" — this is the correct, intended fail-closed behavior for a timeout, not a defect.
 
-PHASE 2: PASSED (Stranger 1 ✓ after refutation, Stranger 2 ✓ after refutation)
+Stranger 2: **PASS** — zero findings.
+
+PHASE 2: PASSED (Stranger 1 ✓, Stranger 2 ✓)
 
 ---
 
 ## Phase 0 results
-- 0a Syntax: PASS
+- 0a Syntax: PASS (including new `sdk/shelfprotocol/mcp_server.py`, `sdk/shelfprotocol/__init__.py`)
 - 0b Secret scan: PASS
 - 0c Required files: PASS
 - 0d Spec conformance: PASS
 - 0e Structural invariants: all PASS
-- New: `railway.json` valid JSON; root `requirements.txt` installs correctly; the exact Railway start command (`uvicorn server.main:app --host 0.0.0.0 --port $PORT`) boots and serves with a dynamic port; healthcheck target returns 200 — all verified via live smoke test before this gate run
 
 ## Ratchet rules checked
-Rules 1–8: all PASS, no changes this run.
+Rules 1–8: all PASS, no changes.
+
+## Rule 9 (new): agent-facing MCP tools must not expose safety-check overrides to the caller
+Added this run — see GATE_RATCHET.md for the full rule text and Phase 0 check.
