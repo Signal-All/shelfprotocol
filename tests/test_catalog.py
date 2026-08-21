@@ -20,6 +20,28 @@ for bad_url, why in [
         pass
 print("PASS: SSRF guard rejects http, odd ports, loopback, private, link-local")
 
+# DNS-rebinding: _assert_url_safe validates one resolution; the actual fetch
+# must be pinned to that exact IP, not re-resolve (a rebinding DNS server
+# could answer public on the first lookup and private on the second).
+_rebind_host = "rebinding.example.test"
+_answers = iter([
+    [(2, 1, 6, "", ("93.184.216.34", 443))],   # first lookup: public IP (passes the guard)
+    [(2, 1, 6, "", ("10.1.2.3", 443))],        # second lookup: private IP (would fail if not pinned)
+])
+_orig_real = cat._real_getaddrinfo
+cat._real_getaddrinfo = lambda host, *a, **kw: next(_answers) if host == _rebind_host else _orig_real(host, *a, **kw)
+try:
+    cat._assert_url_safe(f"https://{_rebind_host}/cat.json")
+    resolved = __import__("socket").getaddrinfo(_rebind_host, 443)
+    assert resolved[0][4][0] == "93.184.216.34", (
+        f"DNS rebinding bypass: connect would resolve to {resolved[0][4][0]}, "
+        f"not the pinned, validated IP"
+    )
+finally:
+    cat._real_getaddrinfo = _orig_real
+    cat._clear_pin()
+print("PASS: fetch is pinned to the validated IP — a second, differing DNS answer can't rebind it")
+
 good = {"items": [{"sku": "A1", "name": "Thing", "price_usd": 9.5}]}
 items = cat.validate(good)
 assert items[0]["in_stock"] is True and items[0]["price_usd"] == 9.5

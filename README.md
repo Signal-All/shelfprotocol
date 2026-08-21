@@ -93,6 +93,13 @@ To change your listing later (limits, checkout endpoint, feed URL — anything
 except the domain itself), send the same body to `PUT /v1/merchants/<domain>`
 with your `X-Api-Key` header. Verification status survives updates.
 
+`PUT` is a full replace of the merchant-declared fields, not a partial patch —
+first `GET /v1/merchants/<domain>` to see your current listing, edit the
+field(s) you want to change, then `PUT` the whole thing back. This matters
+most if you're editing a listing you didn't originally register yourself (see
+Seeding & claiming below) — you won't know its current `checkout`/`catalog`
+values otherwise, and a `PUT` that omits them clears them.
+
 The registry looks up `_openshelf.<domain>` in DNS and confirms the TXT record
 carries your verification token. On success it flips `trust.verified_domain` to
 `true`, which is required before `can_buy()` will allow an agent to purchase
