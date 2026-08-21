@@ -2,9 +2,9 @@
 import importlib
 import os
 
-os.environ["OPENSHELF_RATE_LIMIT"] = "on"
-os.environ["OPENSHELF_RATE_LIMIT_READS_PER_MIN"] = "5"
-os.environ["OPENSHELF_RATE_LIMIT_WRITES_PER_MIN"] = "3"
+os.environ["SHELF_RATE_LIMIT"] = "on"
+os.environ["SHELF_RATE_LIMIT_READS_PER_MIN"] = "5"
+os.environ["SHELF_RATE_LIMIT_WRITES_PER_MIN"] = "3"
 import common  # noqa: E402
 
 client, main = common.fresh_client()
@@ -37,11 +37,11 @@ main.limiter._current_window = 0
 assert client.get("/v1/search").status_code == 200
 print("PASS: fresh window admits requests again")
 
-os.environ["OPENSHELF_RATE_LIMIT"] = "off"
+os.environ["SHELF_RATE_LIMIT"] = "off"
 importlib.reload(ratelimit)
 assert ratelimit.ENABLED is False
 codes = [client.get("/v1/search").status_code for _ in range(10)]
 assert all(c == 200 for c in codes), codes
-print("PASS: OPENSHELF_RATE_LIMIT=off disables limiting entirely")
+print("PASS: SHELF_RATE_LIMIT=off disables limiting entirely")
 
 print("\nAll rate-limit tests passed.")

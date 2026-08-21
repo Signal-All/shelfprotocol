@@ -1,13 +1,13 @@
-# OpenShelf
+# Shelf Protocol
 
 **robots.txt for commerce.** The open directory AI agents query before they buy.
 
 Merchants publish a tiny `shelf.json` describing what they sell and what agents
-are allowed to do. Agents make one lookup before transacting. OpenShelf is the
+are allowed to do. Agents make one lookup before transacting. Shelf Protocol is the
 index in the middle — the handshake layer between agents and the commercial web.
 
 ```
-agent  ──lookup──▶  OpenShelf Registry  ◀──publish──  merchant
+agent  ──lookup──▶  Shelf Protocol Registry  ◀──publish──  merchant
         "can I buy here, and how?"        "here's my shelf.json"
 ```
 
@@ -24,15 +24,15 @@ agent  ──lookup──▶  OpenShelf Registry  ◀──publish──  mercha
 | `spec/SPEC.md` | The open standard. The `shelf.json` format + verification. |
 | `spec/shelf.json.example` | A sample merchant file. |
 | `server/` | The registry API (FastAPI + SQLite). Register, lookup, search, verify, stats. |
-| `sdk/openshelf.py` | The one-line lookup client a developer drops into an agent. |
-| `demo/demo_agent.py` | A shopping agent that uses OpenShelf to decide what it's allowed to buy. |
+| `sdk/shelfprotocol.py` | The one-line lookup client a developer drops into an agent. |
+| `demo/demo_agent.py` | A shopping agent that uses Shelf Protocol to decide what it's allowed to buy. |
 | `web/index.html` | Developer landing page. |
 | `tests/` | Test suites (`cd tests && for t in test_*.py; do python3 $t; done`). |
 
 ## Run it locally (90 seconds)
 
 ```bash
-cd openshelf
+cd shelfprotocol
 pip install -r server/requirements.txt
 
 # 1. start the registry
@@ -43,15 +43,15 @@ python -m uvicorn server.main:app --port 8080
 python -m server.seed
 
 # 3. run the demo agent against it
-OPENSHELF_URL=http://localhost:8080 python demo/demo_agent.py
+SHELF_URL=http://localhost:8080 python demo/demo_agent.py
 ```
 
-You'll watch an agent query OpenShelf, get back verified merchants, and either
+You'll watch an agent query Shelf Protocol, get back verified merchants, and either
 buy autonomously (within the merchant's declared limit) or escalate to a human.
 
 > **Note:** SQLite stores its file next to `server/db.py` by default. If you run
 > on a network/mounted drive that errors with `disk I/O error`, set a local
-> path: `export OPENSHELF_DB=/tmp/openshelf.sqlite`.
+> path: `export SHELF_DB=/tmp/shelf.sqlite`.
 
 ## Register a merchant
 
@@ -83,10 +83,10 @@ curl -X POST http://localhost:8080/v1/merchants \
 The response includes an `api_key` (save it — shown only once) and a `verification_dns_record` to add to your DNS. Once the TXT record is live, confirm ownership with:
 
 ```bash
-export OPENSHELF_API_KEY=osk_...   # the api_key from the registration response
+export SHELF_API_KEY=osk_...   # the api_key from the registration response
 
 curl -X POST http://localhost:8080/v1/merchants/acme-coffee.example/verify \
-  -H "X-Api-Key: $OPENSHELF_API_KEY"
+  -H "X-Api-Key: $SHELF_API_KEY"
 ```
 
 To change your listing later (limits, checkout endpoint, feed URL — anything
@@ -100,13 +100,13 @@ most if you're editing a listing you didn't originally register yourself (see
 Seeding & claiming below) — you won't know its current `checkout`/`catalog`
 values otherwise, and a `PUT` that omits them clears them.
 
-The registry looks up `_openshelf.<domain>` in DNS and confirms the TXT record
+The registry looks up `_shelfprotocol.<domain>` in DNS and confirms the TXT record
 carries your verification token. On success it flips `trust.verified_domain` to
 `true`, which is required before `can_buy()` will allow an agent to purchase
 autonomously (see below).
 
 > **Local demo:** `.example` domains can never resolve in real DNS. Start the
-> server with `OPENSHELF_DNS_CHECK=off` to skip the TXT lookup (the api_key
+> server with `SHELF_DNS_CHECK=off` to skip the TXT lookup (the api_key
 > check still applies).
 
 ## Rate limits
@@ -114,8 +114,8 @@ autonomously (see below).
 The registry rate-limits per client IP on `/v1/*`: **120 reads/min** (lookup,
 search, stats) and **10 writes/min** (register, verify). Exceeding a limit
 returns `429` with a `Retry-After` header. Tune with
-`OPENSHELF_RATE_LIMIT_READS_PER_MIN` / `OPENSHELF_RATE_LIMIT_WRITES_PER_MIN`,
-or disable for local demos and tests with `OPENSHELF_RATE_LIMIT=off`.
+`SHELF_RATE_LIMIT_READS_PER_MIN` / `SHELF_RATE_LIMIT_WRITES_PER_MIN`,
+or disable for local demos and tests with `SHELF_RATE_LIMIT=off`.
 
 ## Seeding & claiming (solving the empty registry)
 
@@ -146,15 +146,15 @@ ask the registry to crawl it:
 
 ```bash
 curl -X POST http://localhost:8080/v1/merchants/acme-coffee.example/catalog/refresh \
-  -H "X-Api-Key: $OPENSHELF_API_KEY"
+  -H "X-Api-Key: $SHELF_API_KEY"
 ```
 
 The fetch is guarded (HTTPS to a public host only, no redirects, 5s timeout,
-1MB / 1000-item caps; `OPENSHELF_CATALOG_FETCH_GUARD=off` relaxes the
+1MB / 1000-item caps; `SHELF_CATALOG_FETCH_GUARD=off` relaxes the
 scheme/IP checks for local demos). Agents then query the cache:
 
 ```python
-from openshelf import catalog, products
+from shelfprotocol import catalog, products
 
 catalog("acme-coffee.example", q="decaf")   # one merchant's items
 products(q="espresso", verified=True)       # across all merchants, verified first
@@ -163,7 +163,7 @@ products(q="espresso", verified=True)       # across all merchants, verified fir
 ## The one line developers add
 
 ```python
-from openshelf import lookup, can_buy
+from shelfprotocol import lookup, can_buy
 
 profile = lookup("acme-coffee.example")
 ok, why = can_buy(profile, amount_usd=40)   # honors the merchant's declared limits

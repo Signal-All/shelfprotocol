@@ -3,7 +3,7 @@ Fetch and validate merchant catalog feeds (shelf-catalog.json).
 
 The feed URL is merchant-controlled data, so the fetch is treated as hostile:
 HTTPS only, publicly routable hosts only, no redirects, 5s timeout, 1MB and
-1000-item caps. Set OPENSHELF_CATALOG_FETCH_GUARD=off to relax the scheme/IP
+1000-item caps. Set SHELF_CATALOG_FETCH_GUARD=off to relax the scheme/IP
 checks for local demos (size and time caps always apply).
 """
 
@@ -18,11 +18,11 @@ from urllib.parse import urlparse
 
 import requests
 
-GUARD_ENABLED = os.environ.get("OPENSHELF_CATALOG_FETCH_GUARD", "on").lower() not in ("off", "0", "false")
+GUARD_ENABLED = os.environ.get("SHELF_CATALOG_FETCH_GUARD", "on").lower() not in ("off", "0", "false")
 MAX_BYTES = 1_000_000
 MAX_ITEMS = 1000
 TIMEOUT_S = 5.0
-USER_AGENT = "OpenShelfBot/0.1 (+https://shelfprotocol.org)"
+USER_AGENT = "ShelfProtocolBot/0.1 (+https://shelfprotocol.com)"
 
 # --- DNS-rebinding guard --------------------------------------------------
 # _assert_url_safe() resolves the host and checks every IP is public, but a

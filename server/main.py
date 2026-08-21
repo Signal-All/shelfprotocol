@@ -1,7 +1,7 @@
 """
-OpenShelf Registry API
+Shelf Protocol Registry API
 =======================
-The hosted index for the OpenShelf standard. Merchants register their
+The hosted index for the Shelf Protocol standard. Merchants register their
 `shelf.json`; agents look merchants up by domain or search by category/product.
 
 Run:
@@ -28,13 +28,13 @@ from pydantic import BaseModel, Field
 from . import catalog, ratelimit
 from .db import DB
 
-# Set OPENSHELF_DNS_CHECK=off to skip the DNS TXT lookup in /verify — for local
+# Set SHELF_DNS_CHECK=off to skip the DNS TXT lookup in /verify — for local
 # demos with reserved TLDs (.example) that can never resolve. Defaults to on.
-DNS_CHECK_ENABLED = os.environ.get("OPENSHELF_DNS_CHECK", "on").lower() not in ("off", "0", "false")
+DNS_CHECK_ENABLED = os.environ.get("SHELF_DNS_CHECK", "on").lower() not in ("off", "0", "false")
 DNS_LOOKUP_TIMEOUT_S = 5.0
 
 app = FastAPI(
-    title="OpenShelf Registry",
+    title="Shelf Protocol Registry",
     version="0.1.0",
     description="robots.txt for commerce — the directory agents query before they buy.",
 )
@@ -122,7 +122,7 @@ class RegisterResponse(BaseModel):
 @app.get("/", tags=["meta"])
 def root():
     return {
-        "service": "OpenShelf Registry",
+        "service": "Shelf Protocol Registry",
         "version": "0.1.0",
         "spec": "robots.txt for commerce",
         "merchants_indexed": db.count(),
@@ -136,7 +136,7 @@ def root():
             "update": "PUT /v1/merchants/{domain} (X-Api-Key)",
             "lookup": "GET /v1/merchants/{domain}",
             "search": "GET /v1/search?q=&category=&protocol=&verified=",
-            "verify": "POST /v1/merchants/{domain}/verify (checks the _openshelf DNS TXT record)",
+            "verify": "POST /v1/merchants/{domain}/verify (checks the _shelfprotocol DNS TXT record)",
             "catalog_refresh": "POST /v1/merchants/{domain}/catalog/refresh (crawls your shelf-catalog.json)",
             "catalog": "GET /v1/merchants/{domain}/catalog?q=",
             "products": "GET /v1/products?q=&category=&verified=&in_stock=",
@@ -164,7 +164,7 @@ def register_merchant(doc: ShelfDoc):
             "domain already registered — use PUT /v1/merchants/{domain} with your X-Api-Key to update your listing",
         )
 
-    token = "openshelf-verify=" + secrets.token_urlsafe(16)
+    token = "shelfprotocol-verify=" + secrets.token_urlsafe(16)
     api_key = "osk_" + secrets.token_urlsafe(24)
     record = doc.model_dump()
     record["trust"] = {
@@ -185,7 +185,7 @@ def register_merchant(doc: ShelfDoc):
         domain=domain,
         status="indexed",
         verification_token=token,
-        verification_dns_record=f'_openshelf.{domain}  TXT  "{token}"',
+        verification_dns_record=f'_shelfprotocol.{domain}  TXT  "{token}"',
         api_key=api_key,
         message="Indexed. Add the DNS TXT record then POST /verify to get verified_domain:true.",
     )
@@ -206,7 +206,7 @@ def claim_merchant(domain: str):
     if record.get("_meta", {}).get("claimed", True):
         raise HTTPException(409, "listing already claimed — its owner manages it with their api_key")
 
-    token = "openshelf-verify=" + secrets.token_urlsafe(16)
+    token = "shelfprotocol-verify=" + secrets.token_urlsafe(16)
     api_key = "osk_" + secrets.token_urlsafe(24)
 
     def apply(current: dict) -> dict:
@@ -221,7 +221,7 @@ def claim_merchant(domain: str):
         domain=domain,
         status="claim_pending",
         verification_token=token,
-        verification_dns_record=f'_openshelf.{domain}  TXT  "{token}"',
+        verification_dns_record=f'_shelfprotocol.{domain}  TXT  "{token}"',
         api_key=api_key,
         message="Add the DNS TXT record then POST /verify to complete the claim and get verified_domain:true.",
     )
@@ -285,7 +285,7 @@ def lookup_merchant(domain: str):
             detail={
                 "domain": domain,
                 "status": "unknown",
-                "advice": "Merchant not in OpenShelf. Treat as unverified.",
+                "advice": "Merchant not in Shelf Protocol. Treat as unverified.",
             },
         )
     db.bump_lookup(domain)
@@ -293,8 +293,8 @@ def lookup_merchant(domain: str):
 
 
 def _dns_txt_has_token(domain: str, token: str) -> tuple[bool, str]:
-    """Return whether `_openshelf.<domain>` publishes a TXT record equal to token."""
-    qname = f"_openshelf.{domain}"
+    """Return whether `_shelfprotocol.<domain>` publishes a TXT record equal to token."""
+    qname = f"_shelfprotocol.{domain}"
     resolver = dns.resolver.Resolver()
     resolver.lifetime = DNS_LOOKUP_TIMEOUT_S
     try:
@@ -316,8 +316,8 @@ def _dns_txt_has_token(domain: str, token: str) -> tuple[bool, str]:
 def verify_merchant(domain: str, x_api_key: str = Header(..., description="api_key returned at registration")):
     """
     Confirm domain ownership. Requires the api_key issued at registration, then
-    checks that `_openshelf.<domain>` publishes a TXT record with the
-    verification token. Set OPENSHELF_DNS_CHECK=off to skip the DNS lookup for
+    checks that `_shelfprotocol.<domain>` publishes a TXT record with the
+    verification token. Set SHELF_DNS_CHECK=off to skip the DNS lookup for
     local demos (.example domains can never resolve).
     """
     domain = domain.lower().strip()
@@ -340,7 +340,7 @@ def verify_merchant(domain: str, x_api_key: str = Header(..., description="api_k
                     "domain": domain,
                     "verified_domain": False,
                     "reason": why,
-                    "expected_record": f'_openshelf.{domain}  TXT  "{token}"',
+                    "expected_record": f'_shelfprotocol.{domain}  TXT  "{token}"',
                     "advice": "Add the TXT record, wait for DNS propagation, then retry.",
                 },
             )

@@ -1,12 +1,12 @@
 """
-OpenShelf SDK — the one line of code a developer adds to an agent.
+Shelf Protocol SDK — the one line of code a developer adds to an agent.
 
-    from openshelf import lookup, search, can_buy
+    from shelfprotocol import lookup, search, can_buy
 
     profile = lookup("acme-coffee.example")
     ok, reason = can_buy(profile, amount_usd=40)
 
-This is intentionally tiny. The whole point is that adopting OpenShelf costs a
+This is intentionally tiny. The whole point is that adopting Shelf Protocol costs a
 developer almost nothing — drop it in once, every agent they build inherits it.
 """
 
@@ -17,8 +17,8 @@ from typing import Optional
 
 import requests
 
-BASE_URL = os.environ.get("OPENSHELF_URL", "https://api.openshelf.dev")
-TIMEOUT = float(os.environ.get("OPENSHELF_TIMEOUT", "5"))
+BASE_URL = os.environ.get("SHELF_URL", "https://api.shelfprotocol.com")
+TIMEOUT = float(os.environ.get("SHELF_TIMEOUT", "5"))
 
 
 def lookup(domain: str, base_url: str = None) -> Optional[dict]:
@@ -86,7 +86,7 @@ def can_buy(profile: dict, amount_usd: float, require_verified: bool = True) -> 
     safe enough to actually happen.
     """
     if not profile:
-        return False, "Merchant not in OpenShelf registry — unknown/unverified."
+        return False, "Merchant not in Shelf Protocol registry — unknown/unverified."
 
     policy = profile.get("agent_policy", {})
     trust = profile.get("trust", {})

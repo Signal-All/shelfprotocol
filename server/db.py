@@ -1,5 +1,5 @@
 """
-Tiny SQLite-backed store for the OpenShelf Registry.
+Tiny SQLite-backed store for the Shelf Protocol Registry.
 Keeps the whole shelf.json record as JSON, with a few indexed columns for search.
 Swap this for Postgres when you outgrow it — the interface stays the same.
 """
@@ -12,7 +12,7 @@ import sqlite3
 import threading
 from typing import Optional
 
-DB_PATH = os.environ.get("OPENSHELF_DB", os.path.join(os.path.dirname(__file__), "openshelf.sqlite"))
+DB_PATH = os.environ.get("SHELF_DB", os.path.join(os.path.dirname(__file__), "shelf.sqlite"))
 
 
 class DB:

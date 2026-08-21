@@ -1,7 +1,7 @@
 """DNS-TXT verification: stubbed-DNS positive/negative paths + demo-mode skip."""
 import os
 
-os.environ["OPENSHELF_DNS_CHECK"] = "on"
+os.environ["SHELF_DNS_CHECK"] = "on"
 import common  # noqa: E402
 
 client, main = common.fresh_client()
@@ -25,7 +25,7 @@ class FakeResolver:
     answers = []
 
     def resolve(self, qname, rtype):
-        assert qname == "_openshelf.shop.example", qname
+        assert qname == "_shelfprotocol.shop.example", qname
         assert rtype == "TXT"
         return self.answers
 
@@ -33,7 +33,7 @@ class FakeResolver:
 main.dns.resolver.Resolver = FakeResolver
 main.DNS_CHECK_ENABLED = True
 
-FakeResolver.answers = [FakeRdata("openshelf-verify=WRONG")]
+FakeResolver.answers = [FakeRdata("shelfprotocol-verify=WRONG")]
 r = client.post("/v1/merchants/shop.example/verify", headers={"X-Api-Key": key})
 assert r.status_code == 422, (r.status_code, r.text)
 assert "do not contain the expected" in r.text

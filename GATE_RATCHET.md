@@ -1,4 +1,4 @@
-# OpenShelf Gate Ratchet
+# Shelf Protocol Gate Ratchet
 
 Confirmed failures that must never re-ship. Phase 0 checks every rule here on every run.
 Rules are append-only. Do not delete or edit past rules.
@@ -41,8 +41,8 @@ Phase 0 check: `grep -q "Register a merchant" README.md && grep -q "POST http://
 ## Rule 5: README code examples must not inline secrets as literal header values
 Confirmed: 2026-07-03
 Was: the `/verify` curl example in README passed the api_key as a raw literal in `-H "X-Api-Key: <the api_key from registration>"`, encouraging copy-paste of secrets directly into shell commands.
-Now required: README examples that use an api_key must set it via an environment variable first (e.g. `export OPENSHELF_API_KEY=...`) and reference the variable in the command, not a literal/placeholder value inline in the header.
-Phase 0 check: `grep -q 'X-Api-Key: \$OPENSHELF_API_KEY' README.md` (and absence of `X-Api-Key: <` or `X-Api-Key: osk_` literal patterns in README.md).
+Now required: README examples that use an api_key must set it via an environment variable first (e.g. `export SHELF_API_KEY=...`) and reference the variable in the command, not a literal/placeholder value inline in the header.
+Phase 0 check: `grep -q 'X-Api-Key: \$SHELF_API_KEY' README.md` (and absence of `X-Api-Key: <` or `X-Api-Key: osk_` literal patterns in README.md).
 
 ## Rule 6: README register example must declare catalog.feed_url and the catalog section must explain initial publishing
 Confirmed: 2026-07-04

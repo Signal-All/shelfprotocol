@@ -29,7 +29,7 @@ assert prof["agent_policy"]["max_autonomous_order_usd"] == 0
 assert "_meta" not in prof, "public lookup must not leak _meta"
 print("PASS: imported listing is unclaimed, inert, and public view has no _meta")
 
-from openshelf import can_buy  # noqa: E402
+from shelfprotocol import can_buy  # noqa: E402
 
 ok, why = can_buy(prof, amount_usd=5)
 assert not ok, why
