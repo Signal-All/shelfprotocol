@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OpenShelf — robots.txt for commerce</title>
+<title>Shelf Protocol — robots.txt for commerce</title>
 <style>
   :root{
     --bg:#0a0e1a; --panel:#121829; --ink:#e7ecf5; --mut:#8b97b0;
@@ -52,9 +52,9 @@
 <div class="wrap">
 
   <header>
-    <div class="badge">OpenShelf · v0.1 open standard</div>
+    <div class="badge">Shelf Protocol · v0.1 open standard</div>
     <h1>The directory agents check<br><span class="grad">before they buy.</span></h1>
-    <p class="sub">Merchants publish one small file. Agents make one lookup. OpenShelf is
+    <p class="sub">Merchants publish one small file. Agents make one lookup. Shelf Protocol is
       <strong>robots.txt for commerce</strong> — the handshake layer between AI agents and the web.</p>
     <div class="cta">
       <a class="btn primary" href="#start">Get listed free</a>
@@ -67,7 +67,7 @@
     <div class="flow">
       <div class="node"><b>Merchant</b><span>publishes <code>shelf.json</code></span></div>
       <div class="arrow">→</div>
-      <div class="node"><b>OpenShelf</b><span>verifies &amp; indexes it</span></div>
+      <div class="node"><b>Shelf Protocol</b><span>verifies &amp; indexes it</span></div>
       <div class="arrow">→</div>
       <div class="node"><b>Agent</b><span>looks up, then buys safely</span></div>
     </div>
@@ -75,7 +75,7 @@
 
   <section id="dev">
     <h2>One line in your agent</h2>
-    <pre><span class="tok-k">from</span> openshelf <span class="tok-k">import</span> lookup, can_buy
+    <pre><span class="tok-k">from</span> shelfprotocol <span class="tok-k">import</span> lookup, can_buy
 
 profile = <span class="tok-f">lookup</span>(<span class="tok-s">"acme-coffee.example"</span>)
 ok, why = <span class="tok-f">can_buy</span>(profile, amount_usd=<span class="tok-s">40</span>)   <span class="tok-c"># honors the merchant's declared limits</span>
@@ -107,11 +107,11 @@ ok, why = <span class="tok-f">can_buy</span>(profile, amount_usd=<span class="to
 }
 
 <span class="tok-c"># 2. register it</span>
-<span class="tok-f">curl</span> -X POST https://api.openshelf.dev/v1/merchants -d @shelf.json</pre>
+<span class="tok-f">curl</span> -X POST https://api.shelfprotocol.com/v1/merchants -d @shelf.json</pre>
   </section>
 
   <section>
-    <h2>How OpenShelf makes money</h2>
+    <h2>How Shelf Protocol makes money</h2>
     <table class="money">
       <tr><th>Layer</th><th>What it is</th></tr>
       <tr><td>Free</td><td>Registration &amp; lookups. Drives scale and adoption.</td></tr>
@@ -122,7 +122,7 @@ ok, why = <span class="tok-f">can_buy</span>(profile, amount_usd=<span class="to
   </section>
 
   <footer>
-    OpenShelf · an open standard. Fork it, extend it, embed it — the goal is for
+    Shelf Protocol · an open standard. Fork it, extend it, embed it — the goal is for
     <code>shelf.json</code> to be as boring and universal as <code>robots.txt</code>.
   </footer>
 

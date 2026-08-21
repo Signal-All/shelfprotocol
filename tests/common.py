@@ -14,9 +14,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "sdk"))
 
-os.environ.setdefault("OPENSHELF_DNS_CHECK", "off")
-os.environ.setdefault("OPENSHELF_RATE_LIMIT", "off")
-os.environ["OPENSHELF_DB"] = os.path.join(tempfile.mkdtemp(prefix="openshelf-test-"), "test.sqlite")
+os.environ.setdefault("SHELF_DNS_CHECK", "off")
+os.environ.setdefault("SHELF_RATE_LIMIT", "off")
+os.environ["SHELF_DB"] = os.path.join(tempfile.mkdtemp(prefix="shelf-test-"), "test.sqlite")
 
 
 def fresh_client():

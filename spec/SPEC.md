@@ -1,6 +1,6 @@
-# OpenShelf Spec v0.1 — "robots.txt for commerce"
+# Shelf Protocol Spec v0.1 — "robots.txt for commerce"
 
-OpenShelf is an **open standard** that lets any merchant describe itself to AI
+Shelf Protocol is an **open standard** that lets any merchant describe itself to AI
 agents, and lets any agent reliably discover what a merchant sells, what it
 costs, and what the agent is allowed to do — without scraping a website.
 
@@ -8,14 +8,14 @@ There are two parts:
 
 1. **`shelf.json`** — a file a merchant hosts at `https://<domain>/.well-known/shelf.json`.
    This is the source of truth, owned by the merchant. (Analogous to `robots.txt`.)
-2. **The OpenShelf Registry** — a hosted index that crawls/accepts `shelf.json`
+2. **The Shelf Protocol Registry** — a hosted index that crawls/accepts `shelf.json`
    files, verifies them, and serves fast lookups + search to agents. Agents that
    don't want to fetch each domain individually just query the registry.
 
 An agent's first call before transacting with a merchant is:
 
 ```
-GET https://api.openshelf.dev/v1/merchants/{domain}
+GET https://api.shelfprotocol.com/v1/merchants/{domain}
 ```
 
 If the merchant is listed, the agent gets a clean, structured, machine-readable
@@ -83,7 +83,7 @@ profile. If not, the agent treats the merchant as "unknown / unverified."
 To get `verified_domain: true`, a merchant adds a DNS TXT record:
 
 ```
-_openshelf.<domain>  TXT  "openshelf-verify=<token>"
+_shelfprotocol.<domain>  TXT  "shelfprotocol-verify=<token>"
 ```
 
 The Registry checks this asynchronously. Verified merchants rank higher in

@@ -1,12 +1,12 @@
 """
-Demo: a shopping agent that uses OpenShelf before it buys.
+Demo: a shopping agent that uses Shelf Protocol before it buys.
 
-This simulates exactly the moment OpenShelf monetizes: a user tells an agent to
-buy something, and the agent's FIRST move is to query OpenShelf to (a) find
+This simulates exactly the moment Shelf Protocol monetizes: a user tells an agent to
+buy something, and the agent's FIRST move is to query Shelf Protocol to (a) find
 merchants and (b) check whether it's allowed to buy autonomously.
 
 Run (with the server running on :8080):
-    OPENSHELF_URL=http://localhost:8080 python demo/demo_agent.py
+    SHELF_URL=http://localhost:8080 python demo/demo_agent.py
 """
 
 import os
@@ -15,9 +15,9 @@ import sys
 # make the sdk importable when run from the repo root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "sdk"))
 
-from openshelf import search, lookup, can_buy  # noqa: E402
+from shelfprotocol import search, lookup, can_buy  # noqa: E402
 
-BASE = os.environ.get("OPENSHELF_URL", "http://localhost:8080")
+BASE = os.environ.get("SHELF_URL", "http://localhost:8080")
 
 
 def banner(text):
@@ -29,10 +29,10 @@ def banner(text):
 def shop(user_request: str, budget_usd: float):
     banner(f'USER: "{user_request}"  (budget ${budget_usd:.2f})')
 
-    # 1. Agent's first call: find candidate merchants via OpenShelf.
-    print("[agent] querying OpenShelf for coffee merchants...")
+    # 1. Agent's first call: find candidate merchants via Shelf Protocol.
+    print("[agent] querying Shelf Protocol for coffee merchants...")
     candidates = search(category="coffee", base_url=BASE)
-    print(f"[agent] OpenShelf returned {len(candidates)} candidate merchant(s).")
+    print(f"[agent] Shelf Protocol returned {len(candidates)} candidate merchant(s).")
 
     # 2. Agent ranks by trust + policy, picks the best it's allowed to use.
     for c in candidates:
@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     banner("Why this is the business")
     print(
-        "Every BUY decision above started with a call to OpenShelf.\n"
+        "Every BUY decision above started with a call to Shelf Protocol.\n"
         "Merchants list themselves to be found; agents can't safely buy without\n"
         "the lookup. That call is the toll booth — and it grows with every new\n"
         "agent a developer ships, with zero sales effort."

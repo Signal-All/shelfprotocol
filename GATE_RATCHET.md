@@ -1,4 +1,4 @@
-# OpenShelf Gate Ratchet
+# Shelf Protocol Gate Ratchet
 
 Confirmed failures that must never re-ship. Phase 0 checks every rule here on every run.
 Rules are append-only. Do not delete or edit past rules.
@@ -41,8 +41,8 @@ Phase 0 check: `grep -q "Register a merchant" README.md && grep -q "POST http://
 ## Rule 5: README code examples must not inline secrets as literal header values
 Confirmed: 2026-07-03
 Was: the `/verify` curl example in README passed the api_key as a raw literal in `-H "X-Api-Key: <the api_key from registration>"`, encouraging copy-paste of secrets directly into shell commands.
-Now required: README examples that use an api_key must set it via an environment variable first (e.g. `export OPENSHELF_API_KEY=...`) and reference the variable in the command, not a literal/placeholder value inline in the header.
-Phase 0 check: `grep -q 'X-Api-Key: \$OPENSHELF_API_KEY' README.md` (and absence of `X-Api-Key: <` or `X-Api-Key: osk_` literal patterns in README.md).
+Now required: README examples that use an api_key must set it via an environment variable first (e.g. `export SHELF_API_KEY=...`) and reference the variable in the command, not a literal/placeholder value inline in the header.
+Phase 0 check: `grep -q 'X-Api-Key: \$SHELF_API_KEY' README.md` (and absence of `X-Api-Key: <` or `X-Api-Key: osk_` literal patterns in README.md).
 
 ## Rule 6: README register example must declare catalog.feed_url and the catalog section must explain initial publishing
 Confirmed: 2026-07-04
@@ -55,3 +55,9 @@ Confirmed: 2026-07-04
 Was: `update_merchant` (and `verify_merchant`, `refresh_catalog`) did `db.get(domain)` then `db.upsert(domain, record)` as separate lock acquisitions, holding the stale read across slow I/O. An update racing /verify could write back a stale trust block, silently un-verifying a merchant; catalog counters and lookup counts could likewise be clobbered.
 Now required: any endpoint that mutates an existing merchant record must apply its mutation through `DB.transform(domain, fn)` (single-lock read-modify-write against the freshest record), with slow I/O (DNS lookups, feed fetches) performed before the transform. `db.upsert` in server/main.py is allowed only for creating records in `register_merchant`.
 Phase 0 check: `grep -q "def transform" server/db.py` and `grep -c "db.upsert(" server/main.py` returns 1 (the register_merchant create path only).
+
+## Rule 8: catalog/importer fetches must pin DNS resolution against rebinding TOCTOU
+Confirmed: 2026-07-05
+Was: `_assert_url_safe()` validated the resolved IP is public, but the subsequent `requests.get()` independently re-resolved DNS when opening the connection — a malicious nameserver could answer public on the validation lookup and private/internal on the connection lookup moments later, defeating the SSRF guard entirely (classic DNS-rebinding TOCTOU). The prior gate had accepted this as a "bounded residual risk"; it is no longer acceptable now that a fix exists.
+Now required: any fetch of a merchant-supplied URL (`server/catalog.py`, `server/importer.py`) must pin the IP validated by `_assert_url_safe()` (thread-local, via the `socket.getaddrinfo` patch) for the duration of the fetch, then clear the pin in a `finally` block — never a bare `requests.get()` straight after validation with no pinning.
+Phase 0 check: `grep -q "_pin_local.pin = " server/catalog.py` and `grep -q "_clear_pin()" server/importer.py` (both fetch call sites clear the pin).

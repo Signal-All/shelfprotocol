@@ -1,5 +1,5 @@
 """
-In-memory per-IP rate limiter for the OpenShelf Registry.
+In-memory per-IP rate limiter for the Shelf Protocol Registry.
 Fixed one-minute windows, no external dependencies. Good enough for a single
 process; swap for a Redis-backed limiter when the registry runs on more than
 one box — the interface stays the same.
@@ -11,12 +11,12 @@ import os
 import threading
 import time
 
-# Set OPENSHELF_RATE_LIMIT=off to disable entirely (tests, local demos).
-ENABLED = os.environ.get("OPENSHELF_RATE_LIMIT", "on").lower() not in ("off", "0", "false")
+# Set SHELF_RATE_LIMIT=off to disable entirely (tests, local demos).
+ENABLED = os.environ.get("SHELF_RATE_LIMIT", "on").lower() not in ("off", "0", "false")
 
 # Reads = GET (lookup, search, stats). Writes = POST (register, verify).
-READS_PER_MIN = int(os.environ.get("OPENSHELF_RATE_LIMIT_READS_PER_MIN", "120"))
-WRITES_PER_MIN = int(os.environ.get("OPENSHELF_RATE_LIMIT_WRITES_PER_MIN", "10"))
+READS_PER_MIN = int(os.environ.get("SHELF_RATE_LIMIT_READS_PER_MIN", "120"))
+WRITES_PER_MIN = int(os.environ.get("SHELF_RATE_LIMIT_WRITES_PER_MIN", "10"))
 
 WINDOW_SECONDS = 60
 

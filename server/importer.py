@@ -45,8 +45,12 @@ def _robots_allows(domain: str) -> bool:
 def _fetch_json(url: str):
     if catalog.GUARD_ENABLED:
         catalog._assert_url_safe(url)
-    r = requests.get(url, timeout=catalog.TIMEOUT_S, allow_redirects=False, stream=True,
-                     headers={"User-Agent": catalog.USER_AGENT})
+    try:
+        r = requests.get(url, timeout=catalog.TIMEOUT_S, allow_redirects=False, stream=True,
+                         headers={"User-Agent": catalog.USER_AGENT})
+    finally:
+        if catalog.GUARD_ENABLED:
+            catalog._clear_pin()
     if r.status_code != 200:
         raise catalog.CatalogError(f"HTTP {r.status_code}")
     body = b""

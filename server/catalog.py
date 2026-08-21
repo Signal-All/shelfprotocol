@@ -3,7 +3,7 @@ Fetch and validate merchant catalog feeds (shelf-catalog.json).
 
 The feed URL is merchant-controlled data, so the fetch is treated as hostile:
 HTTPS only, publicly routable hosts only, no redirects, 5s timeout, 1MB and
-1000-item caps. Set OPENSHELF_CATALOG_FETCH_GUARD=off to relax the scheme/IP
+1000-item caps. Set SHELF_CATALOG_FETCH_GUARD=off to relax the scheme/IP
 checks for local demos (size and time caps always apply).
 """
 
@@ -13,15 +13,39 @@ import ipaddress
 import json
 import os
 import socket
+import threading
 from urllib.parse import urlparse
 
 import requests
 
-GUARD_ENABLED = os.environ.get("OPENSHELF_CATALOG_FETCH_GUARD", "on").lower() not in ("off", "0", "false")
+GUARD_ENABLED = os.environ.get("SHELF_CATALOG_FETCH_GUARD", "on").lower() not in ("off", "0", "false")
 MAX_BYTES = 1_000_000
 MAX_ITEMS = 1000
 TIMEOUT_S = 5.0
-USER_AGENT = "OpenShelfBot/0.1 (+https://shelfprotocol.org)"
+USER_AGENT = "ShelfProtocolBot/0.1 (+https://shelfprotocol.com)"
+
+# --- DNS-rebinding guard --------------------------------------------------
+# _assert_url_safe() resolves the host and checks every IP is public, but a
+# plain requests.get() right after it re-resolves DNS independently when it
+# opens the connection. A malicious authoritative DNS server for the fed URL's
+# host can answer the first lookup with a public IP (passing the guard) and
+# the second, moments later, with a private/internal one (TOCTOU bypass).
+# We close that window by pinning the exact IP that was validated: patch
+# socket.getaddrinfo (which requests/urllib3 calls under the hood via
+# socket.create_connection) to return only the pinned IP for that host,
+# scoped per-thread so concurrent fetches on other threads are unaffected.
+_real_getaddrinfo = socket.getaddrinfo
+_pin_local = threading.local()
+
+
+def _pinned_getaddrinfo(host, *args, **kwargs):
+    pin = getattr(_pin_local, "pin", None)
+    if pin and pin[0] == host:
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (pin[1], 443))]
+    return _real_getaddrinfo(host, *args, **kwargs)
+
+
+socket.getaddrinfo = _pinned_getaddrinfo
 
 
 class CatalogError(Exception):
@@ -31,6 +55,9 @@ class CatalogError(Exception):
 
 
 def _assert_url_safe(url: str):
+    """Validate url is safe to fetch, and pin DNS resolution (this thread
+    only) to the exact IP just validated, so the connection requests.get()
+    opens right after this call can't be rebound to a different address."""
     parsed = urlparse(url)
     if parsed.scheme != "https":
         raise CatalogError("feed_url must be https")
@@ -40,14 +67,32 @@ def _assert_url_safe(url: str):
     if not host:
         raise CatalogError("feed_url has no host")
     try:
-        infos = socket.getaddrinfo(host, 443, proto=socket.IPPROTO_TCP)
+        infos = _real_getaddrinfo(host, 443, proto=socket.IPPROTO_TCP)
     except socket.gaierror:
         raise CatalogError(f"cannot resolve {host}")
+    safe_ip = None
     for info in infos:
         ip = ipaddress.ip_address(info[4][0])
         # is_global excludes private, loopback, link-local, reserved, multicast.
         if not ip.is_global:
             raise CatalogError(f"{host} resolves to a non-public address")
+        safe_ip = safe_ip or info[4][0]
+    _pin_local.pin = (host, safe_ip)
+
+
+def _clear_pin():
+    _pin_local.pin = None
+
+
+def _fetch_pinned(url: str) -> requests.Response:
+    """requests.get with the DNS-rebinding guard's error wrapped as CatalogError.
+    Caller is responsible for pinning (_assert_url_safe) before and clearing
+    (_clear_pin) after, in a finally block."""
+    try:
+        return requests.get(url, timeout=TIMEOUT_S, allow_redirects=False, stream=True,
+                             headers={"User-Agent": USER_AGENT})
+    except requests.RequestException as exc:
+        raise CatalogError(f"fetch failed: {exc.__class__.__name__}")
 
 
 def fetch(url: str) -> list[dict]:
@@ -55,10 +100,10 @@ def fetch(url: str) -> list[dict]:
     if GUARD_ENABLED:
         _assert_url_safe(url)
     try:
-        r = requests.get(url, timeout=TIMEOUT_S, allow_redirects=False, stream=True,
-                         headers={"User-Agent": USER_AGENT})
-    except requests.RequestException as exc:
-        raise CatalogError(f"fetch failed: {exc.__class__.__name__}")
+        r = _fetch_pinned(url)
+    finally:
+        if GUARD_ENABLED:
+            _clear_pin()
     if r.status_code != 200:
         raise CatalogError(f"feed returned HTTP {r.status_code} (redirects are not followed)")
     body = b""

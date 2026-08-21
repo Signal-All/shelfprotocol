@@ -1,9 +1,9 @@
 """PUT /v1/merchants/{domain}: auth, state preservation, immutability, rate bucket."""
 import os
 
-os.environ["OPENSHELF_RATE_LIMIT"] = "on"
-os.environ["OPENSHELF_RATE_LIMIT_WRITES_PER_MIN"] = "6"
-os.environ["OPENSHELF_RATE_LIMIT_READS_PER_MIN"] = "100"
+os.environ["SHELF_RATE_LIMIT"] = "on"
+os.environ["SHELF_RATE_LIMIT_WRITES_PER_MIN"] = "6"
+os.environ["SHELF_RATE_LIMIT_READS_PER_MIN"] = "100"
 import common  # noqa: E402
 
 client, main = common.fresh_client()
