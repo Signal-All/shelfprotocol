@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shelfprotocol"
+version = "0.1.0"
+description = "robots.txt for commerce — the directory AI agents check before they buy"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Shelf Protocol" }]
+dependencies = [
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+# mcp.server.mcpserver (this module's import) is a 2.0+ API surface.
+mcp = ["mcp>=2.0"]
+
+[project.urls]
+Homepage = "https://shelfprotocol.com"
+Repository = "https://github.com/Signal-All/shelfprotocol"
+Spec = "https://github.com/Signal-All/shelfprotocol/blob/main/spec/SPEC.md"
+
+[project.scripts]
+shelfprotocol-mcp = "shelfprotocol.mcp_server:main"
+
+[tool.setuptools]
+package-dir = { "" = "sdk" }
+
+[tool.setuptools.packages.find]
+where = ["sdk"]

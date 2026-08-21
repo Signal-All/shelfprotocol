@@ -24,7 +24,7 @@ agent  ──lookup──▶  Shelf Protocol Registry  ◀──publish──  m
 | `spec/SPEC.md` | The open standard. The `shelf.json` format + verification. |
 | `spec/shelf.json.example` | A sample merchant file. |
 | `server/` | The registry API (FastAPI + SQLite). Register, lookup, search, verify, stats. |
-| `sdk/shelfprotocol.py` | The one-line lookup client a developer drops into an agent. |
+| `sdk/shelfprotocol/` | The one-line lookup client a developer drops into an agent, plus the MCP server. Pip-installable (`pyproject.toml` at repo root). |
 | `demo/demo_agent.py` | A shopping agent that uses Shelf Protocol to decide what it's allowed to buy. |
 | `web/index.html` | Developer landing page. |
 | `tests/` | Test suites (`cd tests && for t in test_*.py; do python3 $t; done`). |
@@ -162,12 +162,37 @@ products(q="espresso", verified=True)       # across all merchants, verified fir
 
 ## The one line developers add
 
+```bash
+pip install shelfprotocol
+```
+
 ```python
 from shelfprotocol import lookup, can_buy
 
 profile = lookup("acme-coffee.example")
 ok, why = can_buy(profile, amount_usd=40)   # honors the merchant's declared limits
 ```
+
+Defaults to the hosted registry at `api.shelfprotocol.com`; point at a
+self-hosted one with `SHELF_URL`.
+
+## Use it from any MCP client
+
+```bash
+pip install "shelfprotocol[mcp]"
+```
+
+```json
+{
+  "mcpServers": {
+    "shelfprotocol": { "command": "shelfprotocol-mcp" }
+  }
+}
+```
+
+Exposes `lookup`, `search`, `can_buy`, `catalog`, and `products` as tools —
+add this to Claude Desktop, Claude Code, or any other MCP client and it can
+check the registry before buying anything, without writing any code.
 
 ## How it makes money
 
