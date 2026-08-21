@@ -1,0 +1,3 @@
+# Root-level pointer so platform build systems (Railway/Nixpacks, etc.) that
+# only look for requirements.txt at the repo root find the real one.
+-r server/requirements.txt
