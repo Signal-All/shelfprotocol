@@ -125,6 +125,7 @@ def validate(doc) -> list[dict]:
     if len(items) > MAX_ITEMS:
         raise CatalogError(f"feed exceeds {MAX_ITEMS} item cap")
     cleaned = []
+    seen_skus: set[str] = set()
     for i, it in enumerate(items):
         if not isinstance(it, dict) or not it.get("sku") or not it.get("name"):
             raise CatalogError(f"item {i}: sku and name are required")
@@ -134,8 +135,17 @@ def validate(doc) -> list[dict]:
         cats = it.get("categories", [])
         if not isinstance(cats, list):
             raise CatalogError(f"item {i}: categories must be a list")
+        sku = str(it["sku"])[:64]
+        # Every item needs a unique sku — the products table's primary key is
+        # (domain, sku), so a duplicate here would otherwise reach the DB as
+        # a bulk insert and fail partway through, after any prior DELETE on
+        # a refresh already committed. Reject up front instead of risking a
+        # partial write.
+        if sku in seen_skus:
+            raise CatalogError(f"item {i}: duplicate sku {sku!r} — every item needs a unique sku")
+        seen_skus.add(sku)
         cleaned.append({
-            "sku": str(it["sku"])[:64],
+            "sku": sku,
             "name": str(it["name"])[:200],
             "description": str(it.get("description", ""))[:1000],
             "categories": [str(c)[:64] for c in cats][:10],

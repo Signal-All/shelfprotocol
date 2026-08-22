@@ -138,8 +138,15 @@ def import_domain(db: DB, domain: str) -> str:
         "_meta": {"claimed": False, "imported_at": time.time(),
                   "source": "shopify-products-json", "lookups": 0},
     }
+    # Catalog write happens before the merchant record so a failure here
+    # (unexpected DB error, not the sku-validation case catalog.validate()
+    # already catches above) can never leave a merchant record whose
+    # catalog.item_count claims items that were never actually written.
+    try:
+        db.set_catalog(domain, items)
+    except Exception as exc:
+        return f"skipped (catalog write failed: {exc})"
     db.upsert(domain, record)
-    db.set_catalog(domain, items)
     return f"imported ({len(items)} items)"
 
 

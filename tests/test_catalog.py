@@ -51,13 +51,14 @@ for bad, why in [
     ({"items": [{"sku": "A", "name": "N", "price_usd": -1}]}, "negative price"),
     ({"items": [{"sku": "A", "name": "N", "price_usd": True}]}, "bool price"),
     ({"items": [{"sku": str(i), "name": "N"} for i in range(1001)]}, "over item cap"),
+    ({"items": [{"sku": "DUP", "name": "A"}, {"sku": "DUP", "name": "B"}]}, "duplicate sku"),
 ]:
     try:
         cat.validate(bad)
         raise AssertionError(f"validator let through: {why}")
     except cat.CatalogError:
         pass
-print("PASS: validator enforces schema, price sanity, item cap")
+print("PASS: validator enforces schema, price sanity, item cap, unique skus")
 
 reg = {
     "merchant": {"name": "Cat Co", "domain": "catco.example", "categories": ["coffee"]},
@@ -114,5 +115,24 @@ print("PASS: feed errors return 422 with reason and advice")
 
 assert client.get("/v1/stats").json()["products_indexed"] == 1
 print("PASS: stats reports products_indexed")
+
+# set_catalog rollback: db.py's own defense-in-depth, independent of
+# catalog.validate() rejecting duplicate skus upstream. A crafted duplicate
+# reaching set_catalog directly must not leave a partial write — the prior
+# catalog (NEW-1) must survive completely unchanged.
+bad_items = [
+    {"sku": "DUPX", "name": "A", "description": "", "categories": [], "price_usd": 1.0, "url": "", "in_stock": True},
+    {"sku": "DUPX", "name": "B", "description": "", "categories": [], "price_usd": 2.0, "url": "", "in_stock": True},
+]
+try:
+    main.db.set_catalog("catco.example", bad_items)
+    raise AssertionError("set_catalog should have raised on duplicate sku")
+except Exception as exc:
+    assert not isinstance(exc, AssertionError), exc
+r = client.get("/v1/merchants/catco.example/catalog").json()
+assert r["count"] == 1 and r["items"][0]["sku"] == "NEW-1", (
+    "set_catalog left a partial write instead of rolling back", r
+)
+print("PASS: set_catalog rolls back cleanly on a failed bulk insert, no partial write")
 
 print("\nAll catalog tests passed.")
