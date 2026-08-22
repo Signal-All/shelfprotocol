@@ -151,7 +151,11 @@ class DB:
         return [json.loads(r["blob"]) for r in rows]
 
     def set_catalog(self, domain: str, items: list[dict]):
-        """Replace a merchant's cached catalog with freshly validated items."""
+        """Replace a merchant's cached catalog with freshly validated items.
+        catalog.validate() rejects duplicate skus before this is ever called,
+        but the explicit rollback here is defense in depth: a partial write
+        (DELETE committed, INSERT half-done) must never be visible, whatever
+        the cause."""
         rows = [
             (domain, it["sku"], it["name"], it["description"],
              " ".join(it["categories"]), it["price_usd"], it["url"],
@@ -159,11 +163,15 @@ class DB:
             for it in items
         ]
         with self._lock:
-            self._conn.execute("DELETE FROM products WHERE domain = ?", (domain,))
-            self._conn.executemany(
-                "INSERT INTO products VALUES (?, ?, ?, ?, ?, ?, ?, ?)", rows
-            )
-            self._conn.commit()
+            try:
+                self._conn.execute("DELETE FROM products WHERE domain = ?", (domain,))
+                self._conn.executemany(
+                    "INSERT INTO products VALUES (?, ?, ?, ?, ?, ?, ?, ?)", rows
+                )
+                self._conn.commit()
+            except Exception:
+                self._conn.rollback()
+                raise
 
     @staticmethod
     def _product_row(r) -> dict:

@@ -1,12 +1,12 @@
 # Shelf Protocol Gate Report
-Date: 2026-08-21 (second run)
+Date: 2026-08-22
 Judge: gpt-4o via OpenAI API (stateless calls — zero shared context per call)
 Gate procedure: /gate-openshelf (executed from .claude/commands/gate-openshelf.md)
-Scope note: this run gates the PyPI packaging + MCP server (branch `feat/mcp-server-and-packaging`, PR #7): `sdk/shelfprotocol.py` restructured into a real package, root `pyproject.toml`, new `sdk/shelfprotocol/mcp_server.py` exposing five tools to any MCP client.
+Scope note: this run gates a fix for a real production incident (branch `fix/duplicate-sku-partial-write`, PR #8). Seeding production against real Shopify stores crashed the importer when graza.co's live feed turned out to have two products sharing the same SKU, leaving a merchant record whose catalog metadata claimed 80 items that were never actually written. Confirmed live via the API and manually cleaned up (direct DB delete over SSH) before this fix.
 
 ## VERDICT: PASS
 
-This gate produced the project's second real code fix. Phase 1 raised one refutable SSRF claim and one MEDIUM worth taking seriously on its merits even though the underlying code had no live bug — `can_buy`'s verification check being caller-overridable on a tool specifically marketed as "the safety check an agent calls before spending money" was weaker defense-in-depth than the new agent-facing surface warranted, so it was tightened rather than just argued away. Both cold strangers PASS. Phase 3 found one real README gap (fixed) alongside a recurring false-positive claim.
+Phase 1 raised two real, well-reasoned findings about the fix's own edges — not routine false positives. One (rollback doesn't restore prior state) was empirically disproven by a passing test. The other (a narrow window for orphaned, invisible, self-healing product rows) was a legitimate observation whose severity I argued down from MEDIUM to LOW rather than dismissing outright, and the judge agreed. Both cold strangers PASS. Phase 3 found one real documentation gap (fixed) alongside the now-familiar false-positive walkthrough claim.
 
 ---
 
@@ -17,44 +17,54 @@ None.
 
 ## Fixed
 
-- **F2 (MEDIUM) — `can_buy` MCP tool exposed a caller-settable `require_verified` argument.** Not a live bug (the merchant `profile` is always fetched fresh from the trusted registry server per call, never caller-supplied — there was no actual path to inject a falsified profile), but a real hardening opportunity specific to the new surface: this tool is explicitly documented as "the safety check — always call it before checkout," and an LLM-visible parameter capable of disabling that check is a weaker design than necessary for something meant to be invoked autonomously by an agent, where a manipulated prompt is a real threat model that doesn't apply to a developer writing code by hand.
-  Fix: `sdk/shelfprotocol/mcp_server.py` — `can_buy(domain, amount_usd, require_verified=True)` → `can_buy(domain, amount_usd)`, with `require_verified=True` now hardcoded in the internal call. The raw Python SDK's `can_buy()` is untouched and still accepts the flag for developers writing deliberate code directly; only the agent-facing MCP tool was tightened.
-  Verified: new test proves an unverified merchant with a $10,000 ceiling is still refused, and asserts via `inspect.signature` that `require_verified` is entirely absent from the tool's parameter schema (not just defaulted safely — structurally impossible to pass). Judge: `{"resolved": true}`. Ratchet Rule 9 added.
+**The production incident itself**, at three layers:
+- `server/catalog.py` `validate()` now rejects duplicate SKUs up front with a clear, actionable error identifying which item and which SKU — protects both the importer and the live `/catalog/refresh` HTTP endpoint, which shares this same validation path.
+- `server/db.py` `set_catalog()` wraps its DELETE+executemany in try/except with explicit rollback, so a partial write can never become visible from any cause, not just this one.
+- `server/importer.py` `import_domain()` now writes the catalog before the merchant record, so a catalog failure of any kind can never leave a merchant record whose metadata lies about what's actually stored.
 
-- **Phase 3 step 4 (CONFUSING) — README never explained how the MCP tool's `can_buy` differs from the raw SDK's.** The difference existed only in the `mcp_server.py` docstring, not in the README a developer would actually read first. Fixed: added a paragraph to the "Use it from any MCP client" section explaining the stricter, non-overridable verification on the MCP tool. Judge: `{"resolved": true}`.
+Verified three ways: reproduced the exact bug against graza.co's real live feed (confirmed the fix catches the actual duplicate SKU `GL1-DRZ500` cleanly instead of crashing), a new test proving `set_catalog` fully restores the prior catalog on a failed write (not just "no partial write" — the actual old data survives), and a new test proving the importer never creates a merchant record on a duplicate-sku feed.
+
+**Phase 3 step 2 (CONFUSING) — README never documented catalog validation errors.** A merchant whose feed fails validation (missing fields, duplicate SKU, etc.) had no documented way to know what error they'd see. Fixed: added a paragraph to the "Catalog feeds" section explaining the validation rules and the `422` + `reason` error shape, directly referencing the duplicate-SKU case this PR just hardened against.
 
 ---
 
 ## Refuted
 
 ### Phase 1
-- **F1 (HIGH) — "SSRF via caller-controlled base_url"**: the quoted line is inside the SDK's own (pre-existing, previously-reviewed) functions, whose `base_url` parameter is for a developer's own code, not the new agent-facing surface. None of the five MCP tool functions accept or forward `base_url` to the underlying SDK calls (confirmed by `grep -n "base_url" sdk/shelfprotocol/mcp_server.py` returning zero matches) — every MCP-driven call falls through to the operator-configured `SHELF_URL`/`BASE_URL`, never something an MCP client can set. Conceded.
+- **F2 (LOW) — "rollback only prevents partial writes, doesn't restore prior state"**: empirically false, not just argued — `tests/test_catalog.py`'s new test seeds a catalog, triggers a failed `set_catalog` call, and asserts the ORIGINAL data survives completely intact, not just "no corruption." SQLite's `rollback()` discards the entire uncommitted transaction (the DELETE included), so the prior state was never actually removed from disk. Conceded.
+
+### Phase 1 — engaged on the merits, not refuted, but downgraded rather than actioned
+- **F1 (MEDIUM → LOW) — "orphaned products rows possible if set_catalog succeeds but the subsequent merchant-record upsert fails"**: the observation is technically accurate (a narrow window exists), but the resulting rows are invisible everywhere in the API (`search_products()`'s plain INNER JOIN structurally excludes any product row without a matching merchant row; per-merchant lookup/catalog both 404 with no merchant record) and self-healing (any future re-import for that domain wipes and rewrites cleanly). Materially safer than the actual incident this PR fixes (a merchant record with *misleading* public data), and the failure trigger (a disk-full-class error hitting the merchants table specifically, immediately after a successful products write) is narrow enough that fixing it further wasn't judged worth the added complexity right now. Judge agreed, revised severity to LOW.
 
 ### Phase 3
-- Step 2 (BLOCKER, recurring false positive across this project's gate history): "README doesn't show how to register a merchant or call can_buy" — contradicted by the existing "Register a merchant" curl example and "The one line developers add" `lookup`/`can_buy` snippet, both already present and unchanged by this PR. Conceded.
-- Steps 1, 3 (MINOR): wants numbered steps rather than prose sections — noted, no action required.
+- Step 1 (BLOCKER, recurring false positive across this project's gate history): "no clear $40 can_buy example" — contradicted by the existing, unchanged "The one line developers add" snippet. Conceded.
 
 ---
 
 ## Cold pass results
 Stranger 1: **PASS**
-- MEDIUM: DNS lookup has a bounded timeout, described as risking "false negatives in domain verification" — this is the correct, intended fail-closed behavior for a timeout, not a defect.
+- MEDIUM: DNS-rebinding claim, quoting the code comment that describes the problem the existing pin mechanism (Ratchet Rule 8) already closes — same recurring pattern as prior runs, not re-litigated since severity stayed non-blocking.
+- LOW: SQLite "not suitable for high-concurrency production" — accepted, documented architectural choice (db.py's own docstring: "Swap this for Postgres when you outgrow it").
 
-Stranger 2: **PASS** — zero findings.
+Stranger 2: **PASS** — same two findings, same assessment.
 
 PHASE 2: PASSED (Stranger 1 ✓, Stranger 2 ✓)
 
 ---
 
 ## Phase 0 results
-- 0a Syntax: PASS (including new `sdk/shelfprotocol/mcp_server.py`, `sdk/shelfprotocol/__init__.py`)
+- 0a Syntax: PASS
 - 0b Secret scan: PASS
 - 0c Required files: PASS
 - 0d Spec conformance: PASS
 - 0e Structural invariants: all PASS
 
 ## Ratchet rules checked
-Rules 1–8: all PASS, no changes.
+Rules 1–9: all PASS, no changes.
 
-## Rule 9 (new): agent-facing MCP tools must not expose safety-check overrides to the caller
-Added this run — see GATE_RATCHET.md for the full rule text and Phase 0 check.
+## Production incident timeline (for the record)
+1. Ran `server/importer.py` against 11 real Shopify store domains via `railway ssh` into the live container — 3 succeeded (382 products indexed), 7 hit the pre-existing 1MB feed-size cap (correct, safe behavior for huge catalogs).
+2. Ran a second batch of 9 domains — crashed on the first domain (`graza.co`) with `sqlite3.IntegrityError` on a genuine duplicate SKU in its live feed.
+3. Diagnosed via the live API: `graza.co`'s merchant record existed with `catalog.item_count: 80`, but its actual catalog was empty (0 items) — the metadata write succeeded before the crash, the catalog write did not.
+4. Manually deleted the stale record via `railway ssh` + direct sqlite3 access before starting the code fix, so the live public registry was never left in a known-bad state for longer than the diagnosis took.
+5. Fixed at the three layers described above, reproduced against the real trigger, gated, merged. Seeding will resume from this branch's deployed state.

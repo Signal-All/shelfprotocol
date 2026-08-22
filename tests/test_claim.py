@@ -87,4 +87,21 @@ assert r["count"] >= 1 and all("_meta" not in m for m in r["results"])
 assert all("claimed" in m for m in r["results"])
 print("PASS: search results strip _meta and surface claimed flag")
 
+# Real-world data quality: a merchant feed with two products sharing the
+# same sku (messy inventory data, not a malformed feed) must never create a
+# merchant record with catalog metadata that doesn't match reality — a live
+# production import once did exactly this and left a ghost listing claiming
+# items that were never actually written.
+DUPLICATE_SKU_FEED = {"products": [
+    {"id": 1, "title": "Mug", "handle": "mug", "vendor": "Messy Co",
+     "product_type": "kitchen", "tags": [], "variants": [{"sku": "SAME", "price": "10.00", "available": True}]},
+    {"id": 2, "title": "Plate", "handle": "plate", "vendor": "Messy Co",
+     "product_type": "kitchen", "tags": [], "variants": [{"sku": "SAME", "price": "8.00", "available": True}]},
+]}
+importer._fetch_json = lambda url: DUPLICATE_SKU_FEED
+status = importer.import_domain(main.db, "messyco.example")
+assert status.startswith("skipped"), status
+assert main.db.get("messyco.example") is None, "duplicate-sku import must not create a merchant record"
+print("PASS: importer skips cleanly on duplicate skus, never leaves a ghost merchant record")
+
 print("\nAll claim-flow tests passed.")

@@ -151,7 +151,13 @@ curl -X POST http://localhost:8080/v1/merchants/acme-coffee.example/catalog/refr
 
 The fetch is guarded (HTTPS to a public host only, no redirects, 5s timeout,
 1MB / 1000-item caps; `SHELF_CATALOG_FETCH_GUARD=off` relaxes the
-scheme/IP checks for local demos). Agents then query the cache:
+scheme/IP checks for local demos). Every item also needs a unique `sku` and
+a `name`, a non-negative `price_usd`, and a `categories` list if present —
+if any item fails validation (including two items sharing a `sku`, a real
+data-quality issue Shopify feeds sometimes have), the whole refresh is
+rejected with `422` and a `reason` explaining exactly what's wrong and
+which item, rather than silently dropping or guessing at bad data. Agents
+then query the cache:
 
 ```python
 from shelfprotocol import catalog, products
