@@ -10,6 +10,7 @@ import json
 import os
 import sqlite3
 import threading
+import time
 from typing import Optional
 
 DB_PATH = os.environ.get("SHELF_DB", os.path.join(os.path.dirname(__file__), "shelf.sqlite"))
@@ -53,6 +54,15 @@ class DB:
                 )
                 """
             )
+            self._conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS delisted (
+                    domain      TEXT PRIMARY KEY,
+                    delisted_at REAL,
+                    note        TEXT
+                )
+                """
+            )
             self._conn.commit()
 
     def _upsert_unlocked(self, domain: str, record: dict):
@@ -82,9 +92,63 @@ class DB:
         )
         self._conn.commit()
 
-    def upsert(self, domain: str, record: dict):
+    def upsert(self, domain: str, record: dict, clear_suppression: bool = False):
+        """Write a record. With clear_suppression, also drop any delisting entry
+        in the SAME lock acquisition.
+
+        The two must not be separable: registration is a domain deliberately
+        opting back in, and doing the write and the un-suppress as two
+        acquisitions leaves a window where a concurrent delist() lands between
+        them — the record ends up deleted but no longer suppressed, so the next
+        importer run silently re-adds a store that asked to be removed. That is
+        the precise outcome delisting exists to prevent.
+        """
         with self._lock:
             self._upsert_unlocked(domain, record)
+            if clear_suppression:
+                self._conn.execute(
+                    "DELETE FROM delisted WHERE domain = ?", (domain.lower().strip(),)
+                )
+                self._conn.commit()
+
+    def delist(self, domain: str, note: str = "") -> bool:
+        """Remove a merchant at its owner's request and suppress re-import.
+
+        One transaction: the record, its cached products, and the suppression
+        entry all land together. A removal that the importer would undo on its
+        next run is not a removal, so the two halves must never be separable.
+        Returns True if a merchant record was actually present.
+        """
+        domain = domain.lower().strip()
+        with self._lock:
+            try:
+                cur = self._conn.execute("DELETE FROM merchants WHERE domain = ?", (domain,))
+                existed = cur.rowcount > 0
+                self._conn.execute("DELETE FROM products WHERE domain = ?", (domain,))
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO delisted (domain, delisted_at, note) VALUES (?, ?, ?)",
+                    (domain, time.time(), note),
+                )
+                self._conn.commit()
+                return existed
+            except Exception:
+                self._conn.rollback()
+                raise
+
+    def is_delisted(self, domain: str) -> bool:
+        """True if this domain asked not to be indexed. Checked by the importer."""
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT 1 FROM delisted WHERE domain = ?", (domain.lower().strip(),)
+            ).fetchone()
+        return row is not None
+
+    def relist(self, domain: str) -> None:
+        """Clear a suppression entry. Called when a domain registers voluntarily —
+        opting back in deliberately should not be blocked by an earlier opt-out."""
+        with self._lock:
+            self._conn.execute("DELETE FROM delisted WHERE domain = ?", (domain.lower().strip(),))
+            self._conn.commit()
 
     def get(self, domain: str) -> Optional[dict]:
         with self._lock:

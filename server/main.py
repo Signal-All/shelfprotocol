@@ -179,7 +179,11 @@ def register_merchant(doc: ShelfDoc):
         "lookups": 0,
         "claimed": True,
     }
-    db.upsert(domain, record)
+    # A domain that previously asked to be delisted is opting back in deliberately
+    # here, so clear the suppression entry — in the same lock acquisition as the
+    # write, so a concurrent delist() can't land between the two and leave the
+    # domain deleted but no longer suppressed.
+    db.upsert(domain, record, clear_suppression=True)
 
     return RegisterResponse(
         domain=domain,

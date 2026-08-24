@@ -137,6 +137,49 @@ That returns an api_key and a DNS record; the claim completes when the
 `/verify` DNS check passes. Until then the listing can't be edited, so a
 claimant who doesn't control the domain's DNS can never control its listing.
 
+### If your store is listed and you don't want it to be
+
+If you didn't ask to be here, that's a fair thing to be annoyed about. Here
+is the whole story, plainly.
+
+Seeded listings are built only from product data a store already publishes
+openly, and they are inert — unverified, $0 ceiling, so `can_buy()` refuses
+them. They exist so the directory isn't empty on day one, not to represent
+any endorsement or relationship. Stores were selected for one reason only:
+they publish a machine-readable product feed, which is what the importer can
+read. It was not a judgement about the business, and nobody was contacted or
+evaluated beforehand.
+
+If a store is yours, you have two options and both are free:
+
+- **Claim it** — the listing becomes yours to control, including setting
+  `agents_allowed: false` if you want agents kept out entirely.
+- **Have it removed** — email <luis@signalall.com> from an address at that
+  domain, or open an issue on this repo. Removal is unconditional: no
+  questions asked and no retention pitch. It is handled by hand today, so:
+  acknowledgement within one business day, listing and cached products gone
+  within five. If that window passes without action, open a public issue on
+  this repo — a missed removal should be visible, not buried in an inbox.
+
+Removal is permanent, not just a delete. The record and its cached products
+go, and the domain is added to a suppression list the importer checks before
+it makes any request — so the next bulk import can't quietly put the store
+back. Opting out stays opted out:
+
+```bash
+python -m server.delist example.com "emailed 2026-08-24, asked to be removed"
+```
+
+Suppression blocks the importer, not the owner. If that store later decides
+it does want to be listed, registering normally clears the entry — an
+opt-out is not a ban.
+
+There is deliberately no self-serve delete *endpoint*. An unauthenticated
+`DELETE` on a domain nobody has proven they own is a way to erase a
+competitor, not a safety feature, and an unclaimed listing has no api_key to
+authenticate against. Removal stays a human running the command above until
+the claim flow can authorize it properly.
+
 ## Catalog feeds (products, not just merchants)
 
 Publishing a catalog is two steps: declare a `catalog.feed_url` when you
