@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The registry — Shelf Protocol</title>
+<style>
+  :root{
+    --bg:#0a0e1a; --panel:#121829; --ink:#e7ecf5; --mut:#8b97b0;
+    --acc:#5b8cff; --acc2:#37e0a6; --warn:#ffb454; --bad:#ff6b6b;
+    --line:#222b42; --code:#0d1424;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(1200px 600px at 70% -10%,#16203a 0,var(--bg) 60%);color:var(--ink)}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  header{padding:66px 0 30px}
+  h1{font-size:42px;line-height:1.08;margin:0 0 12px;letter-spacing:-1.2px}
+  .sub{font-size:18px;color:var(--mut);max-width:620px;margin:0}
+  .stats{display:flex;gap:26px;flex-wrap:wrap;margin-top:26px;padding:20px 22px;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px}
+  .stat b{display:block;font-size:26px;letter-spacing:-.5px}
+  .stat span{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em}
+  .stat.zero b{color:var(--warn)}
+  section{padding:34px 0;border-top:1px solid var(--line)}
+  h2{font-size:22px;margin:0 0 6px;letter-spacing:-.3px}
+  .lede{color:var(--mut);margin:0 0 20px;font-size:15px}
+  .row{display:flex;align-items:center;gap:14px;padding:15px 18px;background:var(--panel);
+    border:1px solid var(--line);border-radius:12px;margin-bottom:10px;text-decoration:none;color:var(--ink)}
+  .row:hover{border-color:var(--acc)}
+  .row .nm{font-weight:600;flex:1;min-width:0}
+  .row .dm{color:var(--mut);font:13px/1.4 "SF Mono",Menlo,Consolas,monospace;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pill{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    border-radius:999px;padding:4px 10px;white-space:nowrap}
+  .pill.no{background:rgba(255,107,107,.12);color:var(--bad)}
+  .pill.yes{background:rgba(55,224,166,.12);color:var(--acc2)}
+  .cap{color:var(--mut);font-size:13px;white-space:nowrap}
+  footer{padding:44px 0 80px;color:var(--mut);font-size:14px;border-top:1px solid var(--line)}
+  footer a{color:var(--acc)}
+  .msg{color:var(--mut);padding:20px 0}
+  @media(max-width:720px){h1{font-size:32px}.row .dm,.cap{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>The registry</h1>
+    <p class="sub">Every merchant an AI agent can currently look up through Shelf Protocol,
+    and exactly what it would learn about each one.</p>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <section>
+    <h2>Merchants</h2>
+    <p class="lede" id="lede">Loading…</p>
+    <div id="list"></div>
+  </section>
+
+  <footer>
+    Listings marked unverified were built from product data those stores already publish
+    openly. They are inert — $0 ceiling, so nothing can be bought through them — and exist
+    so the directory isn't empty on day one. Any store can
+    <a href="https://github.com/Signal-All/shelfprotocol#if-your-store-is-listed-and-you-dont-want-it-to-be">claim or remove its listing</a>.
+    <a href="https://shelfprotocol.com">Shelf Protocol</a>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var API = location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://localhost:8080"
+    : "https://api.shelfprotocol.com";
+
+  // Merchant names and domains come from third-party feeds. Text is set with
+  // textContent and the only URL built from merchant data is a same-origin
+  // /m/ link with the domain percent-encoded, so nothing here can be injected.
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = String(text);
+    return n;
+  }
+
+  function stat(parent, value, label, zero) {
+    var d = el("div", "stat" + (zero ? " zero" : ""));
+    d.appendChild(el("b", null, value));
+    d.appendChild(el("span", null, label));
+    parent.appendChild(d);
+  }
+
+  fetch(API + "/v1/stats")
+    .then(function (r) { return r.json(); })
+    .then(function (s) {
+      var box = document.getElementById("stats");
+      box.textContent = "";
+      stat(box, s.merchants_indexed, "Merchants");
+      stat(box, s.verified_merchants, "Verified", !s.verified_merchants);
+      stat(box, s.products_indexed, "Products");
+      stat(box, s.total_agent_lookups, "Agent lookups");
+    })
+    .catch(function () {
+      document.getElementById("stats").appendChild(
+        el("div", "msg", "Registry stats unavailable."));
+    });
+
+  fetch(API + "/v1/search?limit=100")
+    .then(function (r) {
+      if (!r.ok) throw new Error("registry returned " + r.status);
+      return r.json();
+    })
+    .then(function (data) {
+      var results = (data && data.results) || [];
+      var list = document.getElementById("list");
+      var lede = document.getElementById("lede");
+
+      // .example/.test/.invalid/.localhost are reserved by RFC 2606/6761 and can
+      // never be a real store — anything using one is a smoke-test record, so it
+      // doesn't belong in a public view of the registry.
+      results = results.filter(function (r) {
+        var d = String(((r || {}).merchant || {}).domain || "");
+        return !/\.(example|test|invalid|localhost)$/.test(d);
+      });
+
+      if (!results.length) {
+        lede.textContent = "No merchants are listed yet.";
+        return;
+      }
+      lede.textContent = results.length + " listed. Click any one to see exactly what an agent is told about it.";
+
+      results.forEach(function (r) {
+        var m = r.merchant || {};
+        var trust = r.trust || {};
+        var policy = r.agent_policy || {};
+        var domain = String(m.domain || "");
+        var verified = trust.verified_domain === true;
+        var ceiling = Number(policy.max_autonomous_order_usd) || 0;
+
+        var a = el("a", "row");
+        a.href = "/m/?d=" + encodeURIComponent(domain);
+        a.appendChild(el("span", "nm", m.name || domain));
+        a.appendChild(el("span", "dm", domain));
+        a.appendChild(el("span", "cap", ceiling > 0 ? "$" + ceiling.toFixed(0) + " limit" : "$0 limit"));
+        a.appendChild(el("span", "pill " + (verified ? "yes" : "no"), verified ? "Verified" : "Unclaimed"));
+        list.appendChild(a);
+      });
+    })
+    .catch(function (err) {
+      document.getElementById("lede").textContent =
+        "Couldn't reach the registry: " + String(err.message || err);
+    });
+})();
+</script>
+</body>
+</html>

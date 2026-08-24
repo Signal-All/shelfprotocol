@@ -22,6 +22,7 @@ from typing import Optional
 import dns.exception
 import dns.resolver
 from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
@@ -37,6 +38,26 @@ app = FastAPI(
     title="Shelf Protocol Registry",
     version="0.1.0",
     description="robots.txt for commerce — the directory agents query before they buy.",
+)
+
+# The read side of this API is public data by design — anyone can curl it — so
+# browsers get the same access, which is what lets the static site at
+# shelfprotocol.com render a merchant's listing without proxying through a
+# backend of its own.
+#
+# Deliberately GET/OPTIONS only, and deliberately no credentials. Writes stay
+# same-origin: they authenticate with an X-Api-Key header rather than a cookie,
+# so allowing cross-origin writes would add attack surface for a capability the
+# site does not need. allow_credentials must stay False — with it, "*" is
+# rejected by browsers anyway, and it would let a third-party page ride a
+# visitor's session if cookie auth ever gets added.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "OPTIONS"],
+    allow_headers=["*"],
+    allow_credentials=False,
+    max_age=3600,
 )
 
 db = DB()

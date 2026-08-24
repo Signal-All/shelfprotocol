@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What AI agents see about your store — Shelf Protocol</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{
+    --bg:#0a0e1a; --panel:#121829; --ink:#e7ecf5; --mut:#8b97b0;
+    --acc:#5b8cff; --acc2:#37e0a6; --warn:#ffb454; --bad:#ff6b6b;
+    --line:#222b42; --code:#0d1424;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:radial-gradient(1200px 600px at 70% -10%,#16203a 0,var(--bg) 60%);color:var(--ink)}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  header{padding:56px 0 34px}
+  .eyebrow{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin-bottom:14px}
+  h1{font-size:40px;line-height:1.1;margin:0 0 14px;letter-spacing:-1px}
+  .domain{color:var(--mut);font:15px/1.5 "SF Mono",Menlo,Consolas,monospace}
+  .badge{display:inline-block;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    border-radius:999px;padding:6px 14px;margin-top:18px}
+  .badge.no{background:rgba(255,107,107,.12);color:var(--bad);border:1px solid rgba(255,107,107,.35)}
+  .badge.yes{background:rgba(55,224,166,.12);color:var(--acc2);border:1px solid rgba(55,224,166,.35)}
+  section{padding:38px 0;border-top:1px solid var(--line)}
+  h2{font-size:24px;letter-spacing:-.4px;margin:0 0 8px}
+  .lede{color:var(--mut);margin:0 0 22px;font-size:15px}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td,th{padding:13px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--mut);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.06em;width:38%}
+  .v-yes{color:var(--acc2);font-weight:600}
+  .v-no{color:var(--bad);font-weight:600}
+  .v-warn{color:var(--warn);font-weight:600}
+  .note{color:var(--mut);font-size:13px;display:block;margin-top:3px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;
+    display:flex;flex-direction:column;gap:6px}
+  .card .nm{font-size:15px;font-weight:600;line-height:1.3}
+  .card .pr{color:var(--acc2);font-weight:700;font-size:15px}
+  .card .st{font-size:12px;color:var(--mut)}
+  .card a{color:var(--acc);text-decoration:none;font-size:13px;margin-top:auto}
+  .cta{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px}
+  .cta h3{margin:0 0 10px;font-size:19px}
+  .cta p{color:var(--mut);margin:0 0 16px;font-size:15px}
+  .btn{display:inline-block;padding:13px 22px;border-radius:11px;text-decoration:none;font-weight:600;
+    background:var(--acc);color:#07101f;margin-right:10px}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+  pre{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:18px;
+    overflow:auto;font:13px/1.55 "SF Mono",Menlo,Consolas,monospace;color:#cfe0ff;margin:0}
+  footer{padding:44px 0 80px;color:var(--mut);font-size:14px;border-top:1px solid var(--line);margin-top:38px}
+  footer a{color:var(--acc)}
+  .msg{padding:60px 0;color:var(--mut)}
+  .msg h1{color:var(--ink)}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}h1{font-size:30px}th{width:auto}}
+</style>
+</head>
+<body>
+<div class="wrap" id="root">
+  <div class="msg"><h1>Loading…</h1></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var API = location.hostname === "localhost" || location.hostname === "127.0.0.1"
+    ? "http://localhost:8080"
+    : "https://api.shelfprotocol.com";
+
+  var root = document.getElementById("root");
+
+  // Everything below the API boundary is merchant-supplied: store names,
+  // descriptions, product titles and URLs all originate from a third party's
+  // feed. None of it is ever interpolated into HTML — text goes in via
+  // textContent and links are scheme-checked — so a merchant cannot inject
+  // script into the page we show other merchants.
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined && text !== null) n.textContent = String(text);
+    return n;
+  }
+
+  function safeHref(url) {
+    if (typeof url !== "string" || !url) return null;
+    try {
+      var u = new URL(url, location.href);
+      return (u.protocol === "http:" || u.protocol === "https:") ? u.href : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function money(n) {
+    var v = Number(n);
+    if (!isFinite(v)) v = 0;
+    return "$" + v.toFixed(2);
+  }
+
+  function getDomain() {
+    var p = new URLSearchParams(location.search);
+    var d = (p.get("d") || p.get("domain") || "").trim().toLowerCase();
+    // Accept a pasted URL as well as a bare domain.
+    d = d.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(d) ? d : "";
+  }
+
+  function message(title, body) {
+    root.textContent = "";
+    var w = el("div", "msg");
+    w.appendChild(el("h1", null, title));
+    if (body) w.appendChild(el("p", null, body));
+    root.appendChild(w);
+  }
+
+  function row(tbody, label, valueNode, note) {
+    var tr = document.createElement("tr");
+    tr.appendChild(el("th", null, label));
+    var td = document.createElement("td");
+    td.appendChild(valueNode);
+    if (note) td.appendChild(el("span", "note", note));
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+
+  function render(domain, profile, items) {
+    var m = profile.merchant || {};
+    var policy = profile.agent_policy || {};
+    var trust = profile.trust || {};
+    var checkout = profile.checkout || {};
+    var verified = trust.verified_domain === true;
+    var allowed = policy.agents_allowed === true;
+    var ceiling = Number(policy.max_autonomous_order_usd) || 0;
+
+    root.textContent = "";
+
+    // --- header ---
+    var head = document.createElement("header");
+    head.appendChild(el("div", "eyebrow", "What AI shopping agents currently see"));
+    head.appendChild(el("h1", null, m.name || domain));
+    head.appendChild(el("div", "domain", domain));
+    head.appendChild(el("div", "badge " + (verified ? "yes" : "no"),
+      verified ? "Verified domain" : "Unverified — agents will refuse to buy"));
+    root.appendChild(head);
+
+    // --- the agent's view ---
+    var s1 = document.createElement("section");
+    s1.appendChild(el("h2", null, "The answer an agent gets"));
+    s1.appendChild(el("p", "lede",
+      "When an agent calls can_buy() for this store, these are the facts it decides on."));
+    var t = document.createElement("table");
+    var tb = document.createElement("tbody");
+
+    row(tb, "Agent purchases allowed",
+      el("span", allowed ? "v-yes" : "v-no", allowed ? "Yes" : "No"),
+      allowed ? null : "This store has not opted in to agent purchases.");
+
+    row(tb, "Domain verified",
+      el("span", verified ? "v-yes" : "v-no", verified ? "Yes" : "No"),
+      verified ? "Ownership proven by DNS TXT record."
+               : "Nobody has proven they control this domain, so an agent cannot tell this listing apart from a lookalike site. can_buy() returns false.");
+
+    row(tb, "Autonomous spending limit",
+      el("span", ceiling > 0 ? "v-yes" : "v-warn", money(ceiling)),
+      ceiling > 0 ? "An agent may spend up to this without asking a human."
+                  : "At $0 nothing can be bought autonomously. This is the default for a listing nobody has claimed.");
+
+    row(tb, "Checkout protocol", el("span", null, checkout.protocol || "manual"));
+    row(tb, "Products indexed", el("span", null, String(items.length)),
+      items.length ? "Built from product data this store already publishes openly." : null);
+    t.appendChild(tb);
+    s1.appendChild(t);
+    root.appendChild(s1);
+
+    // --- verdict ---
+    var s2 = document.createElement("section");
+    s2.appendChild(el("h2", null, "So what happens right now"));
+    var verdict = document.createElement("pre");
+    var ok = verified && allowed && ceiling > 0;
+    verdict.textContent = ok
+      ? 'can_buy("' + domain + '", amount_usd=25)\n  → (True, "OK: $25.00 is within the ' + money(ceiling) + ' autonomous limit.")'
+      : 'can_buy("' + domain + '", amount_usd=25)\n  → (False, "' +
+        (!allowed ? "Merchant does not allow agent purchases."
+                  : !verified ? "Merchant domain is not verified — refusing autonomous purchase."
+                              : "$25.00 exceeds merchant's autonomous ceiling of " + money(ceiling) + " — escalate to human confirmation.") + '")';
+    s2.appendChild(verdict);
+    root.appendChild(s2);
+
+    // --- products ---
+    if (items.length) {
+      var s3 = document.createElement("section");
+      s3.appendChild(el("h2", null, "Products agents can see"));
+      s3.appendChild(el("p", "lede", "Showing " + Math.min(items.length, 12) + " of " + items.length + "."));
+      var g = el("div", "grid");
+      items.slice(0, 12).forEach(function (it) {
+        var c = el("div", "card");
+        c.appendChild(el("div", "nm", it.name || "Untitled"));
+        c.appendChild(el("div", "pr", money(it.price_usd)));
+        c.appendChild(el("div", "st", it.in_stock ? "In stock" : "Out of stock"));
+        var href = safeHref(it.url);
+        if (href) {
+          var a = el("a", null, "View →");
+          a.href = href;
+          a.rel = "nofollow noopener noreferrer";
+          a.target = "_blank";
+          c.appendChild(a);
+        }
+        g.appendChild(c);
+      });
+      s3.appendChild(g);
+      root.appendChild(s3);
+    }
+
+    // --- what to do ---
+    var s4 = document.createElement("section");
+    var cta = el("div", "cta");
+    if (verified) {
+      cta.appendChild(el("h3", null, "This listing is yours"));
+      cta.appendChild(el("p", null,
+        "Update what agents see — your spending ceiling, your catalog, or whether agents are welcome at all — with a PUT to /v1/merchants/" + domain + " using your API key."));
+    } else {
+      cta.appendChild(el("h3", null, "Is this your store?"));
+      cta.appendChild(el("p", null,
+        "Claiming it is free and takes about five minutes: one DNS TXT record proves you control the domain. Then you decide what agents can see, what they may spend, and whether they are allowed at all — including turning them off entirely."));
+      var b1 = el("a", "btn", "How to claim it");
+      b1.href = "https://github.com/Signal-All/shelfprotocol#seeding--claiming-solving-the-empty-registry";
+      cta.appendChild(b1);
+    }
+    var b2 = el("a", "btn ghost", "Have it removed");
+    b2.href = "mailto:luis@signalall.com?subject=" + encodeURIComponent("Remove " + domain + " from Shelf Protocol");
+    cta.appendChild(b2);
+    s4.appendChild(cta);
+    root.appendChild(s4);
+
+    // --- footer ---
+    var f = document.createElement("footer");
+    f.appendChild(document.createTextNode("This listing was built from product data " + domain + " already publishes openly. It is unclaimed and inert — nothing can be purchased through it. Removal is unconditional and handled within five business days. "));
+    var fa = el("a", null, "Shelf Protocol");
+    fa.href = "https://shelfprotocol.com";
+    f.appendChild(fa);
+    root.appendChild(f);
+
+    document.title = (m.name || domain) + " — what AI agents see";
+  }
+
+  var domain = getDomain();
+  if (!domain) {
+    message("No store specified", "Add a domain to the address, like /m/?d=example.com");
+    return;
+  }
+
+  fetch(API + "/v1/merchants/" + encodeURIComponent(domain))
+    .then(function (r) {
+      if (r.status === 404) return null;
+      if (!r.ok) throw new Error("registry returned " + r.status);
+      return r.json();
+    })
+    .then(function (profile) {
+      if (!profile) {
+        message("Not in the registry",
+          domain + " has no listing. Nothing about this store is visible to agents through Shelf Protocol.");
+        return null;
+      }
+      return fetch(API + "/v1/merchants/" + encodeURIComponent(domain) + "/catalog")
+        .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+        .catch(function () { return { items: [] }; })
+        .then(function (cat) {
+          render(domain, profile, (cat && cat.items) || []);
+        });
+    })
+    .catch(function (err) {
+      message("Couldn't reach the registry", String(err.message || err));
+    });
+})();
+</script>
+</body>
+</html>
