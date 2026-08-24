@@ -1,7 +1,7 @@
 # Shelf Protocol Gate Report
 Date: 2026-08-24
 Judge: gpt-4o via OpenAI API (stateless calls — zero shared context per call)
-Change under review: removal policy + enforced delisting (`removal-policy`)
+Change under review: merchant UI + registry browse page + CORS (`merchant-ui`)
 
 ## VERDICT: PASS
 
@@ -9,92 +9,105 @@ Change under review: removal policy + enforced delisting (`removal-policy`)
 None.
 
 ## Context
-The registry seeds itself with real stores from their public product feeds without
-asking them first. That is a defensible cold-start tactic only if the stores can
-get out. Before this change they could not: the API had 11 endpoints and none of
-them removed anything, and there was no documented route to ask. A merchant who
-found their business listed had nowhere to go.
+Showing a merchant their listing previously meant sending them a curl command or a
+raw JSON URL, which no store owner will act on. This adds `/m/?d=<domain>` ("what AI
+agents see about your store"), `/registry/` (browse everything), and the CORS header
+that lets a static page on shelfprotocol.com read api.shelfprotocol.com at all.
+
+Every field these pages display is authored by a third party — merchant names,
+descriptions, product titles, prices and product URLs all come from imported store
+feeds. That makes the whole surface attacker-controlled, and it is shown to other
+merchants and to the public.
 
 ## Fixed
-- **Removal was not possible at all.** Added `DB.delist()` (record + cached products
-  + suppression entry, one lock acquisition, try/except with explicit rollback),
-  `DB.is_delisted()`, `DB.relist()`, a `python -m server.delist <domain>` CLI, and a
-  documented policy in both README and the landing page with a concrete SLA
-  (acknowledged in one business day, gone within five).
-- **A removal the system would silently undo.** `import_domain()` now consults
-  `db.is_delisted()` before any outbound request, so a delisted store's feed is
-  never fetched and the next bulk import cannot re-add it.
-- **F1/F2 (MEDIUM → real bug, found by chasing them).** As stated against `db.py`
-  the findings were refutable — `delist`, `relist` and `is_delisted` each hold the
-  same `self._lock` for their whole duration. But the same defect existed for real
-  in `server/main.py`: `register_merchant` did `db.upsert(...)` then `db.relist(...)`
-  as two separate acquisitions. A `delist()` landing between them left the domain
-  deleted but no longer suppressed — re-importable, the precise outcome delisting
-  exists to prevent. Fixed by adding `clear_suppression` to `DB.upsert()` so both
-  writes happen under one acquisition, and removing the separate `relist` call.
-  `tests/test_delist.py` asserts structurally that the window cannot return.
-  Judge confirmed: `{"resolved": true}`.
+Nothing raised by the judge required a fix. One issue was found and fixed by the
+EDITOR before Phase 1: the live registry contains `deploy-smoketest.example`, a
+leftover deploy-verification record that would have appeared on the public browse
+page. Rather than mutate production data, `/registry/` now filters domains under the
+RFC 2606/6761 reserved TLDs (`.example`, `.test`, `.invalid`, `.localhost`), which can
+never be a real store. Verified in node that `examplestore.com` is correctly kept.
 
 ## Refuted
-- **F3 (LOW, `time.time()` clock drift).** No distributed system exists — one
-  process, one local SQLite file, one in-process lock, one clock. `delisted_at` is
-  never read by any logic; `is_delisted()` is an existence check that never touches
-  it. `time.time()` is already the convention for `registered_at` and `imported_at`.
-  Judge conceded: `{"concede": true, "reason": "The concerns about clock drift and
-  distributed systems are not applicable in this context..."}`
+All four Phase 1 findings, each conceded explicitly.
+
+- **F1 (CRITICAL, "DOM XSS via attacker-controlled data")** — the quoted evidence was
+  the EDITOR's own source comment describing the defense, and the impact was stated
+  conditionally ("IF any attacker-controlled data is mistakenly interpolated"), which
+  concedes no such interpolation was found. There is no HTML sink on either page to
+  interpolate into; `tests/test_web_pages.py` fails the build if `innerHTML`,
+  `outerHTML`, `document.write`, `insertAdjacentHTML` or `eval(` appears.
+  Conceded: *"There is no demonstrated path where attacker-controlled data is
+  interpolated into HTML without proper sanitization."*
+- **F2 (HIGH, "unsafe URL schemes in product links")** — quoted `safeHref` in full,
+  then hypothesized its failure. The guard is fail-closed and tested in node against
+  `javascript:`, `JaVaScRiPt:`, leading-whitespace `javascript:`, `data:`, `vbscript:`,
+  `file:`, empty and null — all rejected.
+  Conceded: *"There is no demonstrated input string that bypasses the URL scheme check."*
+- **F3 (MEDIUM, "CORS allows all origins")** — the finding's own impact statement
+  noted the policy is GET/OPTIONS-only without credentials. CORS is not an access
+  control on public data: every endpoint it exposes is unauthenticated and already
+  world-readable by curl. Writes authenticate with an `X-Api-Key` header, not a cookie,
+  and are not in the allowed methods.
+  Conceded: *"The CORS policy does not expose any additional assets that are not
+  already publicly accessible via curl."*
+- **F4 (LOW, "open redirect")** — there is no redirect anywhere in the codebase. The
+  cited URL is a same-origin relative link with a literal prefix and a
+  `encodeURIComponent`-escaped parameter, re-validated on read against a strict regex.
+  Conceded: *"There is no actual redirect occurring in the codebase."*
 
 ## Cold pass results
-Stranger 1: **PASS** — 1 MEDIUM (race in `upsert`), 1 LOW (`time.time()`).
-Stranger 2: **PASS** — same two, independently, same locations.
+Stranger 1: **PASS** — 1 MEDIUM (conditional XSS on the `safeHref` call site), 1 LOW
+(public merchant data is scrapable — it is a public registry).
+Stranger 2: **PASS** — 2 findings whose quoted evidence describes the mitigations
+working ("textContent is used for setting text, preventing script injection").
 
-Neither is actionable. The MEDIUM's own quoted evidence shows both writes inside a
-single `with self._lock:` block, which is the fix rather than the bug; the LOW was
-conceded in Phase 1. Recorded as benign recurring findings alongside the unpinned
-DNS resolver and the env-configurable `SHELF_URL` from prior runs.
+Neither is actionable; both restate the Phase 1 concessions. Recorded alongside the
+standing benign MEDIUMs (unpinned DNS resolver, env-configurable `SHELF_URL`).
 
-## Phase 3 — hostile merchant walkthrough
-Judged as a real store owner who found their business listed without consent and is
-deciding whether to ignore it, demand removal, or escalate.
+## Phase 3 — merchant walkthrough
+Judged as the founder of G FUEL, cold, mildly suspicious, having received a link to
+their own listing — with the page source and the *live* API data it renders.
 
-- Before this change: **`demand_removal`** — 1 BLOCKER (listed without consent),
-  1 CONFUSING (removal not self-serve), 2 unanswered questions ("why was my store
-  chosen?", "what stops you using my data again after removal?").
-- After: **`ignore`** — 1 MINOR, **zero unanswered questions**.
+- **Reaction: `claim_it`** (from `claim_it | ignore | demand_removal | escalate`)
+- **Understood in 10 seconds**
+- 1 MINOR friction: a brief "Loading…" flash before data arrives
+- Most persuasive: *"claiming the listing is free, takes about five minutes, and
+  allows control over what agents can see and do"*
+- Least credible: the product name *"Onions & Waffles"* — which is a real G FUEL
+  product, so that is the live data being accurate rather than a defect
 
-The second unanswered question is what produced the suppression list. A policy
-promising unconditional removal, on a system that would re-add the store on its
-next import, would have been a written promise the code could not keep.
-
-The residual MINOR — wanting a more prominent upfront notice about being listed
-without consent — is honest and unresolved. No wording fixes "you listed me without
-asking"; only not seeding would, and that is a strategy decision, not a gate item.
+That is the outcome this page exists for: the previous Phase 3 merchant, shown only
+the README, said `demand_removal`.
 
 ## Phase 0 results
-- 0a Syntax: **OK**
-- 0b Secret scan: **OK** — two pre-existing negative-test fixtures (`osk_wrong`, `osk_nope`)
-- 0c Required files: **OK**
-- 0d Spec conformance: **OK**
+- 0a Syntax: **OK** — all server and SDK modules compile
+- 0b Secret scan: **OK** — pre-existing negative-test fixtures only
+- 0c/0d Required files, spec conformance: **OK**
 - 0e Structural invariants: **OK**
-- 0f Ratchet: **OK** — all 11 pre-existing rules verified
-- Tests: **9/9 suites pass**, including the new `tests/test_delist.py`
+- 0f Ratchet: **OK** — all 12 pre-existing rules verified
+- Tests: **11/11 suites pass**, including new `tests/test_cors.py` and
+  `tests/test_web_pages.py`
 
 ## Ratchet rules checked
 | Rule | Result |
 |------|--------|
-| 1 — bump_lookup single-lock read-modify-write | PASS |
-| 2 — verify endpoint requires api_key | PASS |
-| 3 — register 409 on existing domain | PASS |
-| 4 — README documents registration with POST body | PASS |
-| 5 — README uses `$SHELF_API_KEY`, no inline secrets | PASS |
-| 6 — README declares `feed_url`, explains two-step publish | PASS |
-| 7 — mutations via `DB.transform`, single `db.upsert` in main.py | PASS (count = 1) |
-| 8 — DNS pinning on merchant-supplied URL fetches | PASS |
-| 9 — MCP `can_buy` exposes no `require_verified` | PASS |
+| 1–3 — lock atomicity, verify auth, register 409 | PASS |
+| 4–6 — README registration, no inline secrets, feed_url | PASS |
+| 7 — mutations via `DB.transform`, single `db.upsert` | PASS (count = 1) |
+| 8 — DNS pinning on merchant-supplied fetches | PASS |
+| 9 — MCP `can_buy` has no `require_verified` | PASS |
 | 10 — every agent-facing tool surface hardened | PASS |
 | 11 — `agent_tools.py` has no postponed annotations | PASS |
+| 12 — removal enforced, not merely performed | PASS |
 
 ## Rules added this run
-- **Rule 12** — a removal must be enforced, not merely performed. Covers the
-  atomicity of delisting, the importer's pre-network suppression check, and the
-  requirement that any path clearing suppression does so in the same lock
-  acquisition as its write.
+- **Rule 13** — browser pages must never route merchant data through an HTML sink;
+  merchant URLs pass a fail-closed scheme guard.
+- **Rule 14** — CORS stays `GET`/`OPTIONS` only with `allow_credentials=False`; a real
+  cross-origin write need gets an explicit allowlist and its own gate run, never a
+  widened wildcard.
+
+## Known and accepted
+The "Loading…" flash is real and unfixed — the pages fetch on load rather than being
+server-rendered, which is the cost of keeping the site static on GitHub Pages. At one
+round trip it is not worth a backend.
