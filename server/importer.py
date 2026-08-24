@@ -96,6 +96,11 @@ def import_domain(db: DB, domain: str) -> str:
     domain = domain.lower().strip()
     if db.get(domain):
         return "skipped (already indexed)"
+    if db.is_delisted(domain):
+        # The store asked to be removed. Re-adding it on the next importer run
+        # would make the removal policy a lie, so this check comes before any
+        # network call — we don't even fetch their feed.
+        return "skipped (delisted at owner's request)"
     if not _robots_allows(domain):
         return "skipped (robots.txt or unreachable)"
     feed_url = f"https://{domain}{FEED_PATH}"

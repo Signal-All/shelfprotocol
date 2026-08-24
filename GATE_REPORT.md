@@ -1,67 +1,82 @@
 # Shelf Protocol Gate Report
 Date: 2026-08-24
 Judge: gpt-4o via OpenAI API (stateless calls — zero shared context per call)
-Change under review: PR #11 — LangChain and CrewAI tool adapters (`framework-tools`)
+Change under review: removal policy + enforced delisting (`removal-policy`)
 
 ## VERDICT: PASS
 
 ## Parked deadlocks — HUMAN DECISIONS REQUIRED
 None.
 
-## Fixed
-No findings raised by the judge required a fix. Two defects were found and fixed
-by the EDITOR's own tests during implementation, before Phase 1:
+## Context
+The registry seeds itself with real stores from their public product feeds without
+asking them first. That is a defensible cold-start tactic only if the stores can
+get out. Before this change they could not: the API had 11 endpoints and none of
+them removed anything, and there was no documented route to ask. A merchant who
+found their business listed had nowhere to go.
 
-- **CrewAI tools with optional arguments crashed at call time.** `agent_tools.py`
-  used `from __future__ import annotations`; CrewAI reflects over those signatures
-  to build a pydantic args schema and received the string `"Optional[str]"`, which
-  it cannot resolve — `PydanticUserError: Shelf_Products is not fully defined`,
-  raised the moment an agent invoked the tool. Fixed by removing the future import
-  from `sdk/shelfprotocol/agent_tools.py` and commenting the constraint at the
-  import block. Now Ratchet Rule 11.
-- **`crewai>=1.0` allowed a silent downgrade to an untested release.** With that
-  floor, `pip install --dry-run "shelfprotocol[mcp,crewai]"` resolved successfully
-  by backtracking crewai to 1.6.1 rather than erroring. Floor raised to
-  `crewai>=1.15` in `pyproject.toml`, which converts the silent downgrade into an
-  explicit `ResolutionImpossible`. Verified by re-running the dry-run.
+## Fixed
+- **Removal was not possible at all.** Added `DB.delist()` (record + cached products
+  + suppression entry, one lock acquisition, try/except with explicit rollback),
+  `DB.is_delisted()`, `DB.relist()`, a `python -m server.delist <domain>` CLI, and a
+  documented policy in both README and the landing page with a concrete SLA
+  (acknowledged in one business day, gone within five).
+- **A removal the system would silently undo.** `import_domain()` now consults
+  `db.is_delisted()` before any outbound request, so a delisted store's feed is
+  never fetched and the next bulk import cannot re-add it.
+- **F1/F2 (MEDIUM → real bug, found by chasing them).** As stated against `db.py`
+  the findings were refutable — `delist`, `relist` and `is_delisted` each hold the
+  same `self._lock` for their whole duration. But the same defect existed for real
+  in `server/main.py`: `register_merchant` did `db.upsert(...)` then `db.relist(...)`
+  as two separate acquisitions. A `delist()` landing between them left the domain
+  deleted but no longer suppressed — re-importable, the precise outcome delisting
+  exists to prevent. Fixed by adding `clear_suppression` to `DB.upsert()` so both
+  writes happen under one acquisition, and removing the separate `relist` call.
+  `tests/test_delist.py` asserts structurally that the window cannot return.
+  Judge confirmed: `{"resolved": true}`.
 
 ## Refuted
-- **F1 (HIGH, pyproject.toml, "Dependency Resolution Conflict")** — judge quoted
-  the EDITOR's own explanatory comment as the evidence of the defect, and stated an
-  impact containing both the conflict *and* "silent downgrades to untested
-  versions" as though they co-occur. They are mutually exclusive: the silent
-  downgrade is what the rejected loose floor produced (measured via
-  `pip install --dry-run`, which selected crewai 1.6.1), and the current floor
-  eliminates that path in favor of a loud resolver error. No environment requires
-  both extras — the MCP server and the CrewAI adapter are two transports for the
-  same five tools. Severity HIGH is also unreachable for an install-time message
-  that fails closed before any code runs.
-  Judge conceded: `{"concede": true, "reason": "The evidence provided was a
-  misinterpretation of an intentional comment in the code, not an actual defect...
-  The issue is a deliberate trade-off decision, not a defect."}`
+- **F3 (LOW, `time.time()` clock drift).** No distributed system exists — one
+  process, one local SQLite file, one in-process lock, one clock. `delisted_at` is
+  never read by any logic; `is_delisted()` is an existence check that never touches
+  it. `time.time()` is already the convention for `registered_at` and `imported_at`.
+  Judge conceded: `{"concede": true, "reason": "The concerns about clock drift and
+  distributed systems are not applicable in this context..."}`
 
 ## Cold pass results
-Stranger 1: **PASS** — 1 MEDIUM: `SHELF_URL` is environment-configurable
-(`sdk/shelfprotocol/__init__.py`), so an attacker controlling the process
-environment could redirect lookups to a malicious registry.
-Stranger 2: **PASS** — same MEDIUM, independently raised, same location.
+Stranger 1: **PASS** — 1 MEDIUM (race in `upsert`), 1 LOW (`time.time()`).
+Stranger 2: **PASS** — same two, independently, same locations.
 
-Not fixed, and not introduced by this change. `SHELF_URL` is a documented feature
-for self-hosted and staging registries, present since the SDK's first version. An
-attacker who can set environment variables in the agent's process already controls
-the process outright and needs no registry redirect. Recorded here as a benign
-recurring MEDIUM, alongside the unpinned DNS resolver noted in prior runs.
+Neither is actionable. The MEDIUM's own quoted evidence shows both writes inside a
+single `with self._lock:` block, which is the fix rather than the bug; the LOW was
+conceded in Phase 1. Recorded as benign recurring findings alongside the unpinned
+DNS resolver and the env-configurable `SHELF_URL` from prior runs.
+
+## Phase 3 — hostile merchant walkthrough
+Judged as a real store owner who found their business listed without consent and is
+deciding whether to ignore it, demand removal, or escalate.
+
+- Before this change: **`demand_removal`** — 1 BLOCKER (listed without consent),
+  1 CONFUSING (removal not self-serve), 2 unanswered questions ("why was my store
+  chosen?", "what stops you using my data again after removal?").
+- After: **`ignore`** — 1 MINOR, **zero unanswered questions**.
+
+The second unanswered question is what produced the suppression list. A policy
+promising unconditional removal, on a system that would re-add the store on its
+next import, would have been a written promise the code could not keep.
+
+The residual MINOR — wanting a more prominent upfront notice about being listed
+without consent — is honest and unresolved. No wording fixes "you listed me without
+asking"; only not seeding would, and that is a strategy decision, not a gate item.
 
 ## Phase 0 results
-- 0a Syntax (paths updated for the post-rename layout): **OK** — 10 modules compiled
-- 0b Secret scan: **OK** — two hits, `osk_wrong` / `osk_nope` in `tests/test_catalog.py`
-  and `tests/test_verify.py`, both deliberately-invalid fixtures asserting rejection.
-  Pre-existing, not literal credentials.
-- 0c Required files: **OK** — all 10 present
-- 0d Spec conformance: **OK** — all 9 required `shelf.json` fields present
-- 0e Structural invariants: **OK** — bump_lookup atomicity, verify-endpoint auth,
-  register 409 guard, `can_buy(require_verified=True)` default, parameterized SQL
-- 0f Ratchet: **OK** — all 9 pre-existing rules verified
+- 0a Syntax: **OK**
+- 0b Secret scan: **OK** — two pre-existing negative-test fixtures (`osk_wrong`, `osk_nope`)
+- 0c Required files: **OK**
+- 0d Spec conformance: **OK**
+- 0e Structural invariants: **OK**
+- 0f Ratchet: **OK** — all 11 pre-existing rules verified
+- Tests: **9/9 suites pass**, including the new `tests/test_delist.py`
 
 ## Ratchet rules checked
 | Rule | Result |
@@ -72,30 +87,14 @@ recurring MEDIUM, alongside the unpinned DNS resolver noted in prior runs.
 | 4 — README documents registration with POST body | PASS |
 | 5 — README uses `$SHELF_API_KEY`, no inline secrets | PASS |
 | 6 — README declares `feed_url`, explains two-step publish | PASS |
-| 7 — mutations via `DB.transform`, single `db.upsert` | PASS (upsert count = 1) |
+| 7 — mutations via `DB.transform`, single `db.upsert` in main.py | PASS (count = 1) |
 | 8 — DNS pinning on merchant-supplied URL fetches | PASS |
 | 9 — MCP `can_buy` exposes no `require_verified` | PASS |
+| 10 — every agent-facing tool surface hardened | PASS |
+| 11 — `agent_tools.py` has no postponed annotations | PASS |
 
 ## Rules added this run
-- **Rule 10** — every agent-facing tool surface must be hardened, not just the MCP
-  one. Rule 9 was written specifically about `mcp_server.py`; the new adapters share
-  its threat model and were unbound by the ratchet.
-- **Rule 11** — `agent_tools.py` must not use postponed annotation evaluation.
-  Codifies the CrewAI schema crash above.
-
-The dependency-floor lesson is deliberately *not* a ratchet rule: a stable Phase 0
-check for it would need a network dry-run rather than a grep, which does not belong
-in the cheap-checks phase. It is documented in `pyproject.toml` and the README
-instead.
-
-## Test evidence
-- 8/8 suites pass under system python3 (mcp 2.0.0): MCP-parity and hardening
-  assertions execute, adapter blocks skip.
-- `tests/test_framework_tools.py` passes in a venv with langchain-core 1.6.0 +
-  crewai 1.15.17: adapter blocks execute, MCP parity skips (crewai's `mcp~=1.28`
-  pin makes both impossible in one environment).
-- Clean-venv installs of the built wheel for `[langchain]` and `[crewai]`
-  separately, each exercised against the live registry at `api.shelfprotocol.com`:
-  `shelf_lookup("gfuel.com")` returns the real record; `shelf_can_buy` refuses it
-  as unverified.
-- `[mcp,crewai]` confirmed to fail resolution by dry-run after the floor change.
+- **Rule 12** — a removal must be enforced, not merely performed. Covers the
+  atomicity of delisting, the importer's pre-network suppression check, and the
+  requirement that any path clearing suppression does so in the same lock
+  acquisition as its write.
