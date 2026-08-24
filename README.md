@@ -24,7 +24,7 @@ agent  ──lookup──▶  Shelf Protocol Registry  ◀──publish──  m
 | `spec/SPEC.md` | The open standard. The `shelf.json` format + verification. |
 | `spec/shelf.json.example` | A sample merchant file. |
 | `server/` | The registry API (FastAPI + SQLite). Register, lookup, search, verify, stats. |
-| `sdk/shelfprotocol/` | The one-line lookup client a developer drops into an agent, plus the MCP server. Pip-installable (`pyproject.toml` at repo root). |
+| `sdk/shelfprotocol/` | The one-line lookup client a developer drops into an agent, plus the MCP server and the LangChain/CrewAI tool adapters. Pip-installable (`pyproject.toml` at repo root). |
 | `demo/demo_agent.py` | A shopping agent that uses Shelf Protocol to decide what it's allowed to buy. |
 | `web/index.html` | Developer landing page. |
 | `tests/` | Test suites (`cd tests && for t in test_*.py; do python3 $t; done`). |
@@ -205,6 +205,48 @@ The MCP tool's `can_buy(domain, amount_usd)` is stricter than the raw SDK's
 `require_verified` argument at all, so a manipulated prompt can never talk
 an agent into skipping domain verification through this tool. Code you write
 yourself can still opt out deliberately with the SDK function directly.
+
+## Use it from LangChain or CrewAI
+
+```bash
+pip install "shelfprotocol[langchain]"     # or: "shelfprotocol[crewai]"
+```
+
+```python
+from langchain.agents import create_agent
+from shelfprotocol.langchain_tools import get_tools
+
+agent = create_agent(model, tools=get_tools())
+```
+
+```python
+from crewai import Agent
+from shelfprotocol.crewai_tools import get_tools
+
+buyer = Agent(role="Purchasing agent", goal="...", tools=get_tools())
+```
+
+Both give the agent the same five tools as the MCP server — `shelf_lookup`,
+`shelf_search`, `shelf_can_buy`, `shelf_catalog`, `shelf_products` — so it can
+find merchants, read their catalogs, and check a purchase against the
+merchant's declared limits before spending anything.
+
+Names carry a `shelf_` prefix because framework tool lists are flat and
+unnamespaced, and a bare `search` or `products` will collide with the web-search
+tool most agent stacks already carry. Pass `get_tools(prefix="")` for the bare
+names if you know yours won't clash.
+
+`shelf_can_buy` is hardened the same way the MCP tool is: no `require_verified`
+argument exists on it, so a manipulated prompt cannot talk the agent into
+skipping domain verification. Deliberate opt-out stays available in code you
+write yourself, via the SDK's `can_buy()` directly.
+
+> **Note:** `crewai` pins `mcp~=1.28`, which contradicts the `[mcp]` extra's
+> `mcp>=2.0`, so `pip install "shelfprotocol[mcp,crewai]"` fails to resolve.
+> That's intentional — the alternative is pip quietly backtracking `crewai` to
+> a years-old release that these adapters were never tested against. Either
+> extra alone installs fine, and you don't need both: the CrewAI adapter and
+> the MCP server are two routes to the same tools.
 
 ## How it makes money
 

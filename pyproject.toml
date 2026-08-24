@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shelfprotocol"
-version = "0.1.0"
+version = "0.2.0"
 description = "robots.txt for commerce — the directory AI agents check before they buy"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -17,6 +17,18 @@ dependencies = [
 [project.optional-dependencies]
 # mcp.server.mcpserver (this module's import) is a 2.0+ API surface.
 mcp = ["mcp>=2.0"]
+# Floors are the versions the adapters are actually tested against, not the
+# oldest that might work.
+langchain = ["langchain-core>=1.0"]
+# NOTE: current crewai pins mcp~=1.28, which contradicts our [mcp] extra's
+# mcp>=2.0, so `shelfprotocol[mcp,crewai]` fails to resolve. That error is
+# deliberate. With a looser floor here pip "succeeds" instead by backtracking
+# crewai down to 1.6.1 — a version old enough to accept mcp 2.x and one these
+# adapters have never been tested against. A loud resolver error beats a silent
+# downgrade to untested code. Either extra alone installs fine, and you don't
+# need both: the CrewAI adapter and the MCP server are two ways to hand an
+# agent the same tools.
+crewai = ["crewai>=1.15"]
 
 [project.urls]
 Homepage = "https://shelfprotocol.com"
