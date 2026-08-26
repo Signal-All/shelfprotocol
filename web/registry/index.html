@@ -6,19 +6,26 @@
 <title>The registry — Shelf Protocol</title>
 <style>
   :root{
-    --bg:#0a0e1a; --panel:#121829; --ink:#e7ecf5; --mut:#8b97b0;
-    --acc:#5b8cff; --acc2:#37e0a6; --warn:#ffb454; --bad:#ff6b6b;
-    --line:#222b42; --code:#0d1424;
+    --bg:#ffffff; --soft:#f6f7f9; --panel:#ffffff; --ink:#15181e; --mut:#5c6573;
+    --acc:#2456d6; --acc-soft:#eef3ff; --acc2:#0a7d55; --good-soft:#e8f6f0;
+    --warn:#b45309; --bad:#c2352c; --bad-soft:#fdeeed;
+    --line:#e3e6eb; --code:#f6f7f9;
+    --shadow:0 1px 2px rgba(20,24,32,.05), 0 8px 24px rgba(20,24,32,.05);
   }
   *{box-sizing:border-box}
-  body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:radial-gradient(1200px 600px at 70% -10%,#16203a 0,var(--bg) 60%);color:var(--ink)}
+  html{-webkit-text-size-adjust:100%}
+  .topbar{border-bottom:1px solid var(--line)}
+  .topbar .wrap{display:flex;align-items:center;height:60px}
+  .topbar a{font-weight:700;font-size:16px;text-decoration:none;color:var(--ink);letter-spacing:-.2px}
+  .topbar a span{color:var(--acc)}
+  body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
   .wrap{max-width:920px;margin:0 auto;padding:0 24px}
   header{padding:66px 0 30px}
   h1{font-size:42px;line-height:1.08;margin:0 0 12px;letter-spacing:-1.2px}
   .sub{font-size:18px;color:var(--mut);max-width:620px;margin:0}
   .stats{display:flex;gap:26px;flex-wrap:wrap;margin-top:26px;padding:20px 22px;
-    background:var(--panel);border:1px solid var(--line);border-radius:14px}
+    background:var(--soft);border:1px solid var(--line);border-radius:14px}
   .stat b{display:block;font-size:26px;letter-spacing:-.5px}
   .stat span{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em}
   .stat.zero b{color:var(--warn)}
@@ -26,15 +33,16 @@
   h2{font-size:22px;margin:0 0 6px;letter-spacing:-.3px}
   .lede{color:var(--mut);margin:0 0 20px;font-size:15px}
   .row{display:flex;align-items:center;gap:14px;padding:15px 18px;background:var(--panel);
-    border:1px solid var(--line);border-radius:12px;margin-bottom:10px;text-decoration:none;color:var(--ink)}
+    border:1px solid var(--line);border-radius:12px;margin-bottom:10px;text-decoration:none;
+    color:var(--ink);box-shadow:var(--shadow)}
   .row:hover{border-color:var(--acc)}
   .row .nm{font-weight:600;flex:1;min-width:0}
-  .row .dm{color:var(--mut);font:13px/1.4 "SF Mono",Menlo,Consolas,monospace;
+  .row .dm{color:var(--mut);font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .pill{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
     border-radius:999px;padding:4px 10px;white-space:nowrap}
-  .pill.no{background:rgba(255,107,107,.12);color:var(--bad)}
-  .pill.yes{background:rgba(55,224,166,.12);color:var(--acc2)}
+  .pill.no{background:var(--bad-soft);color:var(--bad)}
+  .pill.yes{background:var(--good-soft);color:var(--acc2)}
   .cap{color:var(--mut);font-size:13px;white-space:nowrap}
   footer{padding:44px 0 80px;color:var(--mut);font-size:14px;border-top:1px solid var(--line)}
   footer a{color:var(--acc)}
@@ -43,6 +51,7 @@
 </style>
 </head>
 <body>
+<div class="topbar"><div class="wrap"><a href="/">Shelf<span>Protocol</span></a></div></div>
 <div class="wrap">
   <header>
     <h1>The registry</h1>
