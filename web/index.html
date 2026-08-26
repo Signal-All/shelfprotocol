@@ -3,152 +3,320 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Shelf Protocol — robots.txt for commerce</title>
+<title>Shelf Protocol — tell AI shoppers the rules of your store</title>
+<meta name="description" content="AI assistants are starting to buy things for people. Shelf Protocol is how your store tells them whether they're allowed, and how much they can spend. Free, about five minutes.">
 <style>
   :root{
     --bg:#0a0e1a; --panel:#121829; --ink:#e7ecf5; --mut:#8b97b0;
-    --acc:#5b8cff; --acc2:#37e0a6; --line:#222b42; --code:#0d1424;
+    --acc:#5b8cff; --acc2:#37e0a6; --warn:#ffb454; --bad:#ff6b6b;
+    --line:#222b42; --code:#0d1424;
   }
   *{box-sizing:border-box}
-  body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     background:radial-gradient(1200px 600px at 70% -10%,#16203a 0,var(--bg) 60%);color:var(--ink)}
   .wrap{max-width:920px;margin:0 auto;padding:0 24px}
-  header{padding:90px 0 50px;text-align:center}
+  a{color:var(--acc)}
+  header{padding:80px 0 44px;text-align:center}
   .badge{display:inline-block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;
     color:var(--acc2);border:1px solid var(--line);border-radius:999px;padding:6px 14px;margin-bottom:24px}
-  h1{font-size:54px;line-height:1.05;margin:0 0 16px;letter-spacing:-1.5px}
+  h1{font-size:50px;line-height:1.06;margin:0 0 18px;letter-spacing:-1.4px}
   h1 .grad{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;
     background-clip:text;color:transparent}
-  .sub{font-size:21px;color:var(--mut);max-width:640px;margin:0 auto 34px}
-  .cta{display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center}
-  .btn{display:inline-block;padding:13px 22px;border-radius:11px;text-decoration:none;font-weight:600}
-  .btn.primary{background:var(--acc);color:#07101f}
-  .btn.ghost{border:1px solid var(--line);color:var(--ink)}
-  section{padding:46px 0;border-top:1px solid var(--line)}
-  h2{font-size:28px;letter-spacing:-.5px;margin:0 0 22px}
+  .sub{font-size:20px;color:var(--mut);max-width:660px;margin:0 auto 30px}
+  section{padding:52px 0;border-top:1px solid var(--line)}
+  h2{font-size:30px;letter-spacing:-.6px;margin:0 0 10px}
+  .lede{color:var(--mut);font-size:17px;margin:0 0 26px;max-width:660px}
+  .big{font-size:19px;line-height:1.7;max-width:680px}
+  .big strong{color:var(--acc2)}
+
+  .check{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px}
+  .check form{display:flex;gap:10px;flex-wrap:wrap;margin:0}
+  .check input{flex:1;min-width:220px;padding:14px 16px;border-radius:11px;border:1px solid var(--line);
+    background:var(--code);color:var(--ink);font-size:16px;font-family:inherit}
+  .check input:focus{outline:none;border-color:var(--acc)}
+  .check button{padding:14px 24px;border-radius:11px;border:0;background:var(--acc);color:#07101f;
+    font-weight:700;font-size:16px;cursor:pointer;font-family:inherit}
+  .check .hint{color:var(--mut);font-size:14px;margin:12px 0 0}
+  .check .err{color:var(--warn);font-size:14px;margin:12px 0 0;min-height:1px}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:8px}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px}
+  .step .n{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
+    border-radius:999px;background:var(--acc);color:#07101f;font-weight:800;font-size:15px;margin-bottom:12px}
+  .step h3{margin:0 0 8px;font-size:18px}
+  .step p{margin:0;color:var(--mut);font-size:15px}
+
+  .dns{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .dns .bar{padding:12px 18px;border-bottom:1px solid var(--line);color:var(--mut);font-size:13px;
+    text-transform:uppercase;letter-spacing:.08em}
+  .dns table{width:100%;border-collapse:collapse}
+  .dns th{padding:12px 18px;text-align:left;color:var(--mut);font-size:12px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);width:22%}
+  .dns td{padding:14px 18px;border-bottom:1px solid var(--line);
+    font:14px/1.5 "SF Mono",Menlo,Consolas,monospace;color:#cfe0ff;word-break:break-all}
+  .dns tr:last-child td,.dns tr:last-child th{border-bottom:0}
+  .dim{color:#8b97b0}
+
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
   .card h3{margin:0 0 8px;font-size:17px}
   .card p{margin:0;color:var(--mut);font-size:15px}
-  .num{font-size:13px;color:var(--acc2);font-weight:700;letter-spacing:.1em}
-  pre{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px;
-    overflow:auto;font:14px/1.55 "SF Mono",Menlo,Consolas,monospace;color:#cfe0ff}
-  .tok-c{color:#6b7790}.tok-k{color:#c792ea}.tok-s{color:#c3e88d}.tok-f{color:#82aaff}
-  .flow{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px}
-  .node{flex:1;min-width:180px;text-align:center}
-  .node b{display:block;font-size:16px;margin-bottom:4px}
-  .node span{color:var(--mut);font-size:14px}
-  .arrow{color:var(--acc);font-size:24px;font-weight:700}
-  table{width:100%;border-collapse:collapse;font-size:15px}
-  td,th{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-  th{color:var(--mut);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.06em}
-  .money td:first-child{color:var(--acc2);font-weight:700;white-space:nowrap}
-  footer{padding:50px 0 80px;color:var(--mut);text-align:center;font-size:14px}
-  @media(max-width:720px){.grid{grid-template-columns:1fr}h1{font-size:40px}}
+
+  .btn{display:inline-block;padding:14px 24px;border-radius:11px;text-decoration:none;font-weight:600}
+  .btn.primary{background:var(--acc);color:#07101f}
+  .btn.ghost{border:1px solid var(--line);color:var(--ink)}
+  .cta{display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .center{text-align:center}
+  .center .lede{margin-left:auto;margin-right:auto}
+
+  figure{margin:0}
+  figcaption{color:var(--mut);font-size:14px;margin-top:12px;text-align:center}
+  svg{max-width:100%;height:auto;display:block}
+
+  footer{padding:50px 0 80px;color:var(--mut);text-align:center;font-size:14px;border-top:1px solid var(--line)}
+  @media(max-width:760px){
+    .grid,.steps{grid-template-columns:1fr}
+    h1{font-size:34px}h2{font-size:24px}.sub{font-size:18px}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header>
-    <div class="badge">Shelf Protocol · v0.1 open standard</div>
-    <h1>The directory agents check<br><span class="grad">before they buy.</span></h1>
-    <p class="sub">Merchants publish one small file. Agents make one lookup. Shelf Protocol is
-      <strong>robots.txt for commerce</strong> — the handshake layer between AI agents and the web.</p>
+    <div class="badge">Free · about five minutes</div>
+    <h1>Your customer asks ChatGPT<br><span class="grad">to order candles.</span></h1>
+    <p class="sub">Before an AI spends someone's money, it tries to confirm the shop is real and
+    not a copy. Right now there's no way for it to confirm yours — so this is about giving it
+    one. It's free, and it doesn't change anything your customers see.</p>
     <div class="cta">
-      <a class="btn primary" href="#start">Get listed free</a>
-      <a class="btn ghost" href="/registry/">Browse the registry</a>
-      <a class="btn ghost" href="#dev">Add it to your agent</a>
+      <a class="btn primary" href="#check">See what AI sees about your store</a>
+      <a class="btn ghost" href="#why">Wait, is this really happening?</a>
     </div>
   </header>
 
-  <section>
-    <h2>How it works</h2>
-    <div class="flow">
-      <div class="node"><b>Merchant</b><span>publishes <code>shelf.json</code></span></div>
-      <div class="arrow">→</div>
-      <div class="node"><b>Shelf Protocol</b><span>verifies &amp; indexes it</span></div>
-      <div class="arrow">→</div>
-      <div class="node"><b>Agent</b><span>looks up, then buys safely</span></div>
+  <section id="why">
+    <h2>Is this really happening?</h2>
+    <p class="big">It's early — and worth being straight with you about how early. People already
+    ask ChatGPT to find them a gift, tell Alexa to reorder something, or let an app pick a brand
+    for them. What's changing is the last step: assistants are starting to
+    <strong>place the order themselves</strong>, without a person clicking Buy. That part is new,
+    it is not yet common, and <strong>nobody can tell you exactly how fast it grows.</strong></p>
+    <p class="big" style="margin-top:18px">That creates a problem nobody had before. A person can
+    look at a website and tell it's the real shop. Software can't. And a fake copy of a store is
+    cheap to make. So a careful assistant does the same thing you'd do with a stranger asking for
+    your card details — <strong>it plays it safe and skips the shop it can't confirm.</strong>
+    Nothing to do with the quality of your store; it simply has no way to check.</p>
+    <p class="big" style="margin-top:18px">This page is about giving it a way to say yes to you —
+    before that matters, rather than after.</p>
+  </section>
+
+  <section id="check">
+    <h2>Start here</h2>
+    <p class="lede">Type your store's web address. You'll see exactly what an AI shopping
+    assistant is told about your shop today — including whether it would walk away.</p>
+    <div class="check">
+      <form id="lookup">
+        <input id="domain" type="text" placeholder="yourstore.com" autocomplete="off"
+               spellcheck="false" aria-label="Your store's web address">
+        <button type="submit">Show me</button>
+      </form>
+      <p class="err" id="err"></p>
+      <p class="hint">No sign-up, nothing to install. If your store isn't listed yet, it'll say so.</p>
     </div>
   </section>
 
-  <section id="dev">
-    <h2>One line in your agent</h2>
-    <pre><span class="tok-k">from</span> shelfprotocol <span class="tok-k">import</span> lookup, can_buy
+  <section id="how">
+    <h2>What that looks like</h2>
+    <p class="lede">Here's the moment that decides whether you get the sale. It takes a fraction
+    of a second and nobody is watching it happen.</p>
 
-profile = <span class="tok-f">lookup</span>(<span class="tok-s">"acme-coffee.example"</span>)
-ok, why = <span class="tok-f">can_buy</span>(profile, amount_usd=<span class="tok-s">40</span>)   <span class="tok-c"># honors the merchant's declared limits</span>
-<span class="tok-c"># → (True, "OK: $40.00 is within the $250.00 autonomous limit.")</span></pre>
-    <p style="color:var(--mut)">The merchant declares its spending limits and rules. Your agent honors them.
-      That contract is what makes autonomous buying safe enough to actually ship.</p>
+    <figure>
+      <svg viewBox="0 0 900 300" role="img" aria-label="A customer asks an AI assistant to order coffee. The assistant checks Shelf Protocol to find out whether the store is real and what its rules are. If the store has verified itself and set a limit, the assistant buys within that limit. If not, the assistant cannot tell the store from a fake and goes elsewhere.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#5b8cff"/>
+          </marker>
+          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#37e0a6"/>
+          </marker>
+          <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#ff6b6b"/>
+          </marker>
+        </defs>
+
+        <rect x="10" y="112" width="150" height="76" rx="12" fill="#121829" stroke="#222b42"/>
+        <text x="85" y="142" text-anchor="middle" fill="#e7ecf5" font-size="15" font-weight="600" font-family="sans-serif">Your customer</text>
+        <text x="85" y="164" text-anchor="middle" fill="#8b97b0" font-size="13" font-family="sans-serif">"order more coffee"</text>
+
+        <line x1="164" y1="150" x2="216" y2="150" stroke="#5b8cff" stroke-width="2" marker-end="url(#ar)"/>
+
+        <rect x="222" y="112" width="150" height="76" rx="12" fill="#121829" stroke="#222b42"/>
+        <text x="297" y="142" text-anchor="middle" fill="#e7ecf5" font-size="15" font-weight="600" font-family="sans-serif">AI assistant</text>
+        <text x="297" y="164" text-anchor="middle" fill="#8b97b0" font-size="13" font-family="sans-serif">about to spend money</text>
+
+        <line x1="376" y1="150" x2="428" y2="150" stroke="#5b8cff" stroke-width="2" marker-end="url(#ar)"/>
+
+        <rect x="434" y="104" width="164" height="92" rx="12" fill="#121829" stroke="#5b8cff"/>
+        <text x="516" y="134" text-anchor="middle" fill="#5b8cff" font-size="15" font-weight="700" font-family="sans-serif">Shelf Protocol</text>
+        <text x="516" y="156" text-anchor="middle" fill="#8b97b0" font-size="13" font-family="sans-serif">Is this store real?</text>
+        <text x="516" y="174" text-anchor="middle" fill="#8b97b0" font-size="13" font-family="sans-serif">What are its rules?</text>
+
+        <path d="M602 132 L660 84" stroke="#37e0a6" stroke-width="2" fill="none" marker-end="url(#ar2)"/>
+        <path d="M602 168 L660 216" stroke="#ff6b6b" stroke-width="2" fill="none" marker-end="url(#ar3)"/>
+
+        <rect x="666" y="34" width="224" height="86" rx="12" fill="#121829" stroke="#37e0a6"/>
+        <text x="778" y="62" text-anchor="middle" fill="#37e0a6" font-size="13" font-weight="700" font-family="sans-serif">YOU'VE SET YOUR RULES</text>
+        <text x="778" y="84" text-anchor="middle" fill="#e7ecf5" font-size="14" font-family="sans-serif">It buys from you,</text>
+        <text x="778" y="103" text-anchor="middle" fill="#e7ecf5" font-size="14" font-family="sans-serif">within your limit.</text>
+
+        <rect x="666" y="184" width="224" height="86" rx="12" fill="#121829" stroke="#ff6b6b"/>
+        <text x="778" y="212" text-anchor="middle" fill="#ff6b6b" font-size="13" font-weight="700" font-family="sans-serif">YOU HAVEN'T</text>
+        <text x="778" y="234" text-anchor="middle" fill="#e7ecf5" font-size="14" font-family="sans-serif">It can't tell you apart</text>
+        <text x="778" y="253" text-anchor="middle" fill="#e7ecf5" font-size="14" font-family="sans-serif">from a fake. It walks.</text>
+      </svg>
+      <figcaption>The assistant makes this call in a fraction of a second, with no human watching.</figcaption>
+    </figure>
   </section>
 
   <section>
-    <h2>Why it spreads on its own</h2>
+    <h2>Why this matters to you</h2>
+    <p class="big">A careful AI assistant won't buy from a store it can't confirm is real —
+    because copying a store's website is easy, and spending a customer's money at a fake one is
+    the worst mistake it can make. <strong>So it does the safe thing and goes somewhere else.</strong>
+    Not because your store did anything wrong. Because it had no way to check.</p>
+  </section>
+
+  <section>
+    <h2>What you actually do</h2>
+    <p class="lede">Three steps. No coding, no plugin, nothing to install on your store.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <h3>Show the shop is yours</h3>
+        <p>You add one line in the same settings that make your email work. That's the proof —
+        only the real owner can change those, so nobody else can claim your shop.</p>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <h3>Set your limit</h3>
+        <p>You decide the most an AI may spend without a human approving it. $50, $500, or leave
+        it at zero. It's your call and you can change it whenever you like.</p>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <h3>That's it</h3>
+        <p>Assistants can now see your shop is genuine and know your rules. There is nothing
+        else to do, nothing to install, and nothing to maintain.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Step 1, in real life</h2>
+    <p class="lede"><strong>This is the only technical bit on the whole page.</strong> It's the
+    same kind of setting you (or whoever set up your site) used to make your email work. You paste
+    two short lines into wherever your web address lives — Shopify, GoDaddy, Namecheap,
+    Squarespace — and that's the end of it.</p>
+    <div class="dns">
+      <div class="bar">What you paste in</div>
+      <table>
+        <tr><th>Type</th><td>TXT</td></tr>
+        <tr><th>Name</th><td>_shelfprotocol</td></tr>
+        <tr><th>Value</th><td>shelfprotocol-verify=<span class="dim">(we give you this part)</span></td></tr>
+      </table>
+    </div>
+    <p class="lede" style="margin-top:20px">If that means nothing to you, that is completely
+    normal and you do not need to learn it. This is a job for whoever looks after your website —
+    or, if that's nobody, for your website provider's support chat, who do it every day.</p>
+
+    <div class="check" style="margin-top:8px">
+      <div class="bar" style="padding:0 0 10px;border:0">Not technical? Forward this</div>
+      <p style="margin:0;color:var(--mut);font-size:15px;line-height:1.7">
+        "Hi — can you add a TXT record to our domain for me? The name is
+        <code>_shelfprotocol</code> and I'll send you the value. It's for a store verification
+        thing. It shouldn't affect the website or email."
+      </p>
+      <p class="hint">That's the entire request. Most providers do it while you wait.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What you get</h2>
     <div class="grid">
-      <div class="card"><div class="num">MERCHANTS</div><h3>Can't afford to be invisible</h3>
-        <p>If agents can't see you, you don't exist to AI shoppers. Listing is free and takes 5 minutes.</p></div>
-      <div class="card"><div class="num">DEVELOPERS</div><h3>Cheaper than scraping</h3>
-        <p>One reliable lookup beats parsing broken websites. Drop it in once; every agent inherits it.</p></div>
-      <div class="card"><div class="num">THE INDEX</div><h3>Compounds</h3>
-        <p>More merchants → agents prefer it → more developers depend on it → more merchants join.</p></div>
+      <div class="card"><h3>You set the spending limit</h3>
+        <p>Nothing can be bought automatically until you say so, and never above the number you
+        choose. Verifying your store doesn't open the doors — that's a separate decision, and
+        it's yours.</p></div>
+      <div class="card"><h3>You control what's visible</h3>
+        <p>Your products, your categories, your checkout method. Or switch AI purchases off
+        entirely and still be listed as a real, verified store.</p></div>
+      <div class="card"><h3>Nobody can pretend to be you</h3>
+        <p>Once your shop is confirmed as yours, a copycat site can't pass itself off as you to
+        an assistant that checks.</p></div>
     </div>
-  </section>
-
-  <section id="start">
-    <h2>Get listed</h2>
-    <pre><span class="tok-c"># 1. host this at https://yourdomain.com/.well-known/shelf.json</span>
-{
-  <span class="tok-s">"shelf_version"</span>: <span class="tok-s">"0.1"</span>,
-  <span class="tok-s">"merchant"</span>: { <span class="tok-s">"name"</span>: <span class="tok-s">"Your Store"</span>, <span class="tok-s">"domain"</span>: <span class="tok-s">"yourdomain.com"</span> },
-  <span class="tok-s">"agent_policy"</span>: { <span class="tok-s">"agents_allowed"</span>: <span class="tok-k">true</span>, <span class="tok-s">"max_autonomous_order_usd"</span>: <span class="tok-s">250</span> },
-  <span class="tok-s">"checkout"</span>: { <span class="tok-s">"protocol"</span>: <span class="tok-s">"AP2"</span> }
-}
-
-<span class="tok-c"># 2. register it</span>
-<span class="tok-f">curl</span> -X POST https://api.shelfprotocol.com/v1/merchants -d @shelf.json</pre>
-  </section>
-
-  <section>
-    <h2>How Shelf Protocol makes money</h2>
-    <table class="money">
-      <tr><th>Layer</th><th>What it is</th></tr>
-      <tr><td>Free</td><td>Registration &amp; lookups. Drives scale and adoption.</td></tr>
-      <tr><td>Verified</td><td>Merchants pay for a verified badge that unlocks autonomous purchases (higher conversion).</td></tr>
-      <tr><td>Metered API</td><td>Per-lookup pricing above a free threshold — usage-based, like Stripe/Twilio.</td></tr>
-      <tr><td>Enterprise</td><td>Priority placement, catalog feeds, reputation data for retailers &amp; payment networks.</td></tr>
-    </table>
   </section>
 
   <section id="listings">
-    <h2>Seeded listings, and how to be removed</h2>
+    <h2>Is your store already listed?</h2>
     <div class="grid">
-      <div class="card"><h3>Why your store may already be here</h3>
-        <p>If you didn't ask to be here, that's fair to be annoyed about. The registry
-        was seeded with a small number of real stores, built only from product data
-        those stores already publish openly. Stores were picked for one reason: they
-        publish a machine-readable product feed. Seeded listings are inert: unverified,
-        $0 ceiling, so no agent can transact against them.</p></div>
-      <div class="card"><h3>Claim it</h3>
-        <p>If the store is yours, claim the listing and it becomes yours to control —
-        what agents see, what they're allowed to spend, and whether they're welcome at
-        all. Verification is one DNS TXT record and takes about five minutes.</p></div>
-      <div class="card"><h3>Or have it taken down</h3>
-        <p>If you'd rather not be listed, email
-        <a href="mailto:luis@signalall.com">luis@signalall.com</a> from an address at
-        that domain, or open an issue on the repo. Removal is unconditional — no
-        questions, no retention pitch. Handled by hand today: acknowledged within one
-        business day, gone within five.</p></div>
+      <div class="card"><h3>Why it might be</h3>
+        <p>If you didn't ask to be here, that's fair to be annoyed about. The registry was seeded
+        with a small number of real stores, built only from product information those stores
+        already publish openly. They were picked for one reason: they publish a product feed
+        anyone can read.</p></div>
+      <div class="card"><h3>It can't do anything yet</h3>
+        <p>Unclaimed listings are inert — unverified, $0 limit — so no AI can buy through them.
+        Being listed is not a claim that you endorsed anything.</p></div>
+      <div class="card"><h3>Claim it, or have it removed</h3>
+        <p>Claiming is free and takes about five minutes. Or email
+        <a href="mailto:luis@signalall.com">luis@signalall.com</a> and it's gone — no questions,
+        no sales pitch. Acknowledged within one business day, removed within five.</p></div>
+    </div>
+  </section>
+
+  <section class="center">
+    <h2>See where your store stands</h2>
+    <p class="lede">Ten seconds, and you don't have to sign up for anything.</p>
+    <div class="cta">
+      <a class="btn primary" href="#check">Check my store</a>
+      <a class="btn ghost" href="/registry/">See every listed shop</a>
     </div>
   </section>
 
   <footer>
-    Shelf Protocol · an open standard. Fork it, extend it, embed it — the goal is for
-    <code>shelf.json</code> to be as boring and universal as <code>robots.txt</code>.
+    Shelf Protocol is free and open. Any shop can use it, and anyone can build on it — no
+    company owns it and there's nothing to sign up for.<br><br>
+    Building AI software instead? <a href="/developers/">Developer docs</a> ·
+    <a href="https://github.com/Signal-All/shelfprotocol">GitHub</a> ·
+    <a href="/registry/">See every listed shop</a>
   </footer>
 
 </div>
+
+<script>
+(function () {
+  "use strict";
+  var form = document.getElementById("lookup");
+  var input = document.getElementById("domain");
+  var err = document.getElementById("err");
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var d = (input.value || "").trim().toLowerCase();
+    // Accept a pasted URL as readily as a bare domain — a store owner will paste
+    // whatever is sitting in their address bar.
+    d = d.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(d)) {
+      err.textContent = "That doesn't look like a web address. Try something like yourstore.com";
+      return;
+    }
+    err.textContent = "";
+    // Same-origin, and the only variable part is percent-encoded, so this can't
+    // be pointed off-site.
+    location.href = "/m/?d=" + encodeURIComponent(d);
+  });
+})();
+</script>
 </body>
 </html>

@@ -1,113 +1,89 @@
 # Shelf Protocol Gate Report
-Date: 2026-08-24
+Date: 2026-08-26
 Judge: gpt-4o via OpenAI API (stateless calls — zero shared context per call)
-Change under review: merchant UI + registry browse page + CORS (`merchant-ui`)
+Change under review: merchant-first marketing site (`merchant-first-site`)
 
-## VERDICT: PASS
+## VERDICT: PASS (with a product limitation recorded, not fixed)
 
 ## Parked deadlocks — HUMAN DECISIONS REQUIRED
-None.
+None blocking. One product decision is surfaced below under "The finding that matters".
 
 ## Context
-Showing a merchant their listing previously meant sending them a curl command or a
-raw JSON URL, which no store owner will act on. This adds `/m/?d=<domain>` ("what AI
-agents see about your store"), `/registry/` (browse everything), and the CORS header
-that lets a static page on shelfprotocol.com read api.shelfprotocol.com at all.
-
-Every field these pages display is authored by a third party — merchant names,
-descriptions, product titles, prices and product URLs all come from imported store
-feeds. That makes the whole surface attacker-controlled, and it is shown to other
-merchants and to the public.
+The landing page was written for developers and, oddly, for investors: a Python
+snippet, a raw JSON blob, a curl command, and a table titled "How Shelf Protocol
+makes money" — on the page meant to convert store owners. A merchant landing on it
+had no sentence explaining what any of it meant for their shop. This rewrites it for
+merchants, moves every code sample to a new `/developers/` page, and removes the
+revenue table from the public site entirely.
 
 ## Fixed
-Nothing raised by the judge required a fix. One issue was found and fixed by the
-EDITOR before Phase 1: the live registry contains `deploy-smoketest.example`, a
-leftover deploy-verification record that would have appeared on the public browse
-page. Rather than mutate production data, `/registry/` now filters domains under the
-RFC 2606/6761 reserved TLDs (`.example`, `.test`, `.invalid`, `.localhost`), which can
-never be a real store. Verified in node that `examplestore.com` is correctly kept.
+- Landing page rewritten merchant-first: plain-language premise, an inline SVG of the
+  buy/walk-away decision, a store-address box that drops the owner straight into their
+  own `/m/` page, and the DNS step shown as the two fields they'd paste.
+- All code, JSON, curl and API reference moved to `/developers/`.
+- Revenue table removed from `web/` (verified absent).
+- **Phase 3 round 1 — BLOCKER.** A non-technical store owner did not understand *why
+  an AI would shop at all*. The page explained the mechanism without ever establishing
+  the premise. Added an "Is this really happening?" section grounding it in behaviour
+  she already recognises (asking ChatGPT for a gift, telling Alexa to reorder).
+- **Phase 3 round 2 — pressure regression.** The premise fix made the hero read as
+  fear-selling ("it quietly buys from one it can"). Softened, and added a
+  forward-to-your-web-person block so the DNS step becomes something to delegate
+  rather than something to learn.
+- **Phase 3 round 3, DTC persona — overclaim.** "This is happening widely already
+  might be overstated, as there is no specific data or examples provided." Fair, and
+  the same overclaim pattern the ratchet already polices elsewhere. The section now
+  states plainly that it is early, not yet common, and that nobody can say how fast it
+  grows.
 
 ## Refuted
-All four Phase 1 findings, each conceded explicitly.
-
-- **F1 (CRITICAL, "DOM XSS via attacker-controlled data")** — the quoted evidence was
-  the EDITOR's own source comment describing the defense, and the impact was stated
-  conditionally ("IF any attacker-controlled data is mistakenly interpolated"), which
-  concedes no such interpolation was found. There is no HTML sink on either page to
-  interpolate into; `tests/test_web_pages.py` fails the build if `innerHTML`,
-  `outerHTML`, `document.write`, `insertAdjacentHTML` or `eval(` appears.
-  Conceded: *"There is no demonstrated path where attacker-controlled data is
-  interpolated into HTML without proper sanitization."*
-- **F2 (HIGH, "unsafe URL schemes in product links")** — quoted `safeHref` in full,
-  then hypothesized its failure. The guard is fail-closed and tested in node against
-  `javascript:`, `JaVaScRiPt:`, leading-whitespace `javascript:`, `data:`, `vbscript:`,
-  `file:`, empty and null — all rejected.
-  Conceded: *"There is no demonstrated input string that bypasses the URL scheme check."*
-- **F3 (MEDIUM, "CORS allows all origins")** — the finding's own impact statement
-  noted the policy is GET/OPTIONS-only without credentials. CORS is not an access
-  control on public data: every endpoint it exposes is unauthenticated and already
-  world-readable by curl. Writes authenticate with an `X-Api-Key` header, not a cookie,
-  and are not in the allowed methods.
-  Conceded: *"The CORS policy does not expose any additional assets that are not
-  already publicly accessible via curl."*
-- **F4 (LOW, "open redirect")** — there is no redirect anywhere in the codebase. The
-  cited URL is a same-origin relative link with a literal prefix and a
-  `encodeURIComponent`-escaped parameter, re-validated on read against a strict regex.
-  Conceded: *"There is no actual redirect occurring in the codebase."*
+None. Phase 1 returned `{"findings": []}` — no hypotheticals to argue with.
 
 ## Cold pass results
-Stranger 1: **PASS** — 1 MEDIUM (conditional XSS on the `safeHref` call site), 1 LOW
-(public merchant data is scrapable — it is a public registry).
-Stranger 2: **PASS** — 2 findings whose quoted evidence describes the mitigations
-working ("textContent is used for setting text, preventing script injection").
+Stranger 1: **PASS**, zero findings.
+Stranger 2: **PASS**, zero findings.
 
-Neither is actionable; both restate the Phase 1 concessions. Recorded alongside the
-standing benign MEDIUMs (unpinned DNS resolver, env-configurable `SHELF_URL`).
+## Phase 3 — two personas, and the gap between them is the result
+| Persona | Understood it | Would act |
+|---|---|---|
+| Solo candle shop, non-technical, no web person | **No** (3 iterations, unmoved) | No |
+| DTC brand, ~20 staff, has a web contractor | **Yes** | Yes — would forward it |
 
-## Phase 3 — merchant walkthrough
-Judged as the founder of G FUEL, cold, mildly suspicious, having received a link to
-their own listing — with the page source and the *live* API data it renders.
+The DTC founder is the audience the outreach actually targets, and she reported the
+page as clear, the ask as reasonable, and explicitly "doesn't feel like a scam." Her
+most-persuasive line was the core argument the page is built on.
 
-- **Reaction: `claim_it`** (from `claim_it | ignore | demand_removal | escalate`)
-- **Understood in 10 seconds**
-- 1 MINOR friction: a brief "Loading…" flash before data arrives
-- Most persuasive: *"claiming the listing is free, takes about five minutes, and
-  allows control over what agents can see and do"*
-- Least credible: the product name *"Onions & Waffles"* — which is a real G FUEL
-  product, so that is the live data being accurate rather than a defect
+## The finding that matters — recorded, not fixed
+The solo shop owner's blocker did not move across three rewrites. It relocated
+(round 1: "why would AI shop"; rounds 2–3: "I don't know what a TXT record is") but
+never cleared. That is not a copy problem and further copy iteration will not shift it:
+**adding a DNS TXT record is genuinely technical**, and a merchant with nobody to
+delegate it to cannot complete onboarding regardless of wording.
 
-That is the outcome this page exists for: the previous Phase 3 merchant, shown only
-the README, said `demand_removal`.
+If the long tail of small non-technical shops is ever a target, the fix is a different
+verification path — a Shopify app, a file upload, or a meta tag pasted into a theme —
+not better copy. Recorded here so the next person doesn't re-litigate it in prose.
 
 ## Phase 0 results
-- 0a Syntax: **OK** — all server and SDK modules compile
-- 0b Secret scan: **OK** — pre-existing negative-test fixtures only
-- 0c/0d Required files, spec conformance: **OK**
-- 0e Structural invariants: **OK**
-- 0f Ratchet: **OK** — all 12 pre-existing rules verified
-- Tests: **11/11 suites pass**, including new `tests/test_cors.py` and
-  `tests/test_web_pages.py`
+- Syntax, secret scan, required files, spec conformance, structural invariants: **OK**
+- Ratchet: **OK** — all 14 rules verified
+- Tests: **11/11 suites pass**
 
 ## Ratchet rules checked
 | Rule | Result |
 |------|--------|
 | 1–3 — lock atomicity, verify auth, register 409 | PASS |
 | 4–6 — README registration, no inline secrets, feed_url | PASS |
-| 7 — mutations via `DB.transform`, single `db.upsert` | PASS (count = 1) |
+| 7 — mutations via `DB.transform`, single `db.upsert` | PASS |
 | 8 — DNS pinning on merchant-supplied fetches | PASS |
-| 9 — MCP `can_buy` has no `require_verified` | PASS |
-| 10 — every agent-facing tool surface hardened | PASS |
-| 11 — `agent_tools.py` has no postponed annotations | PASS |
+| 9–11 — agent-tool hardening, no postponed annotations | PASS |
 | 12 — removal enforced, not merely performed | PASS |
+| 13 — no HTML sinks in `web/`, fail-closed href guard | PASS (coverage widened to all four pages) |
+| 14 — CORS GET/OPTIONS only, no credentials | PASS |
 
 ## Rules added this run
-- **Rule 13** — browser pages must never route merchant data through an HTML sink;
-  merchant URLs pass a fail-closed scheme guard.
-- **Rule 14** — CORS stays `GET`/`OPTIONS` only with `allow_credentials=False`; a real
-  cross-origin write need gets an explicit allowlist and its own gate run, never a
-  widened wildcard.
-
-## Known and accepted
-The "Loading…" flash is real and unfixed — the pages fetch on load rather than being
-server-rendered, which is the cost of keeping the site static on GitHub Pages. At one
-round trip it is not worth a backend.
+None. The Phase 3 findings are calibration judgements about copy, and a ratchet rule
+that cannot be checked mechanically would dilute the file rather than protect it.
+Rule 13's *test* coverage was widened instead — it now binds every page under `web/`,
+not just the two that fetch merchant data today, since a future page rendering a store
+name is exactly the one that would be written without remembering the rule.
