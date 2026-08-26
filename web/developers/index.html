@@ -7,12 +7,20 @@
 <meta name="description" content="Add Shelf Protocol to an AI agent: Python SDK, LangChain and CrewAI tools, an MCP server, and the registry API.">
 <style>
   :root{
-    --bg:#0a0e1a; --panel:#121829; --ink:#e7ecf5; --mut:#8b97b0;
-    --acc:#5b8cff; --acc2:#37e0a6; --line:#222b42; --code:#0d1424;
+    --bg:#ffffff; --soft:#f6f7f9; --panel:#ffffff; --ink:#15181e; --mut:#5c6573;
+    --acc:#2456d6; --acc-soft:#eef3ff; --acc2:#0a7d55; --good-soft:#e8f6f0;
+    --warn:#b45309; --bad:#c2352c; --bad-soft:#fdeeed;
+    --line:#e3e6eb; --code:#f6f7f9;
+    --shadow:0 1px 2px rgba(20,24,32,.05), 0 8px 24px rgba(20,24,32,.05);
   }
   *{box-sizing:border-box}
-  body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:radial-gradient(1200px 600px at 70% -10%,#16203a 0,var(--bg) 60%);color:var(--ink)}
+  html{-webkit-text-size-adjust:100%}
+  .topbar{border-bottom:1px solid var(--line)}
+  .topbar .wrap{display:flex;align-items:center;height:60px}
+  .topbar a{font-weight:700;font-size:16px;text-decoration:none;color:var(--ink);letter-spacing:-.2px}
+  .topbar a span{color:var(--acc)}
+  body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
   .wrap{max-width:920px;margin:0 auto;padding:0 24px}
   a{color:var(--acc)}
   header{padding:70px 0 34px}
@@ -26,20 +34,25 @@
   .lede{color:var(--mut);margin:0 0 20px;max-width:680px}
   p{max-width:680px}
   pre{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:20px;
-    overflow:auto;font:14px/1.6 "SF Mono",Menlo,Consolas,monospace;color:#cfe0ff}
-  code{font:13.5px/1.5 "SF Mono",Menlo,Consolas,monospace;color:#cfe0ff}
-  .tok-c{color:#6b7790}.tok-k{color:#c792ea}.tok-s{color:#c3e88d}.tok-f{color:#82aaff}
+    overflow:auto;font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--ink)}
+  code{font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#0f3d8a;
+    background:var(--acc-soft);border-radius:4px;padding:1px 5px}
+  pre code{background:none;padding:0}
+  /* light-background syntax colours — the dark palette was unreadable here */
+  .tok-c{color:#6b7280}.tok-k{color:#8b2ea8}.tok-s{color:#0a6b3d}.tok-f{color:#1d47b4}
   table{width:100%;border-collapse:collapse;font-size:15px}
   td,th{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
   th{color:var(--mut);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.06em}
   td code{white-space:nowrap}
-  .note{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc2);
-    border-radius:10px;padding:16px 18px;color:var(--mut);font-size:15px;max-width:680px}
+  .note{background:var(--good-soft);border:1px solid #bfe4d5;border-left:3px solid var(--acc2);
+    border-radius:10px;padding:16px 18px;color:#2f4f43;font-size:15px;max-width:680px}
+  .note strong{color:#0a5c3f}
   footer{padding:50px 0 80px;color:var(--mut);font-size:14px;border-top:1px solid var(--line)}
   @media(max-width:760px){h1{font-size:32px}h2{font-size:22px}}
 </style>
 </head>
 <body>
+<div class="topbar"><div class="wrap"><a href="/">Shelf<span>Protocol</span></a></div></div>
 <div class="wrap">
 
   <header>

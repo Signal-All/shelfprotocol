@@ -1,120 +1,83 @@
 # Shelf Protocol Gate Report
 Date: 2026-08-26
 Judge: gpt-4o via OpenAI API (stateless calls — zero shared context per call)
-Change under review: merchant-first marketing site (`merchant-first-site`)
+Change under review: light redesign + animated explainer + trust section (`light-redesign`)
 
-## VERDICT: PASS (with a product limitation recorded, not fixed)
+## VERDICT: PASS
 
 ## Parked deadlocks — HUMAN DECISIONS REQUIRED
-None blocking. One product decision is surfaced below under "The finding that matters".
+One, flagged not blocked: the site now carries Luis Rivera's name and a first-person
+statement in a "Who's behind this" section. His name and email are already public in
+every commit of the public repo, so this adds no new exposure — but the positioning
+("I built this on my own, no company, no investors") is his to own or veto.
 
 ## Context
-The landing page was written for developers and, oddly, for investors: a Python
-snippet, a raw JSON blob, a curl command, and a table titled "How Shelf Protocol
-makes money" — on the page meant to convert store owners. A merchant landing on it
-had no sentence explaining what any of it meant for their shop. This rewrites it for
-merchants, moves every code sample to a new `/developers/` page, and removes the
-revenue table from the public site entirely.
+Luis's read: the site was "very futuristic and might be too much for a merchant." He
+was right, and it's the same mistake as the copy one layer down. Dark navy, neon
+gradients, glowing accents and monospace are the visual language of developer
+infrastructure. A Shopify merchant's daily tools — Shopify admin, Klaviyo, Stripe,
+Gorgias — are light, calm and conventional. Design that doesn't match what someone
+already trusts creates hesitation before a word is read.
 
 ## Fixed
-- Landing page rewritten merchant-first: plain-language premise, an inline SVG of the
-  buy/walk-away decision, a store-address box that drops the owner straight into their
-  own `/m/` page, and the DNS step shown as the two fields they'd paste.
-- All code, JSON, curl and API reference moved to `/developers/`.
-- Revenue table removed from `web/` (verified absent).
-- **Phase 3 round 1 — BLOCKER.** A non-technical store owner did not understand *why
-  an AI would shop at all*. The page explained the mechanism without ever establishing
-  the premise. Added an "Is this really happening?" section grounding it in behaviour
-  she already recognises (asking ChatGPT for a gift, telling Alexa to reorder).
-- **Phase 3 round 2 — pressure regression.** The premise fix made the hero read as
-  fear-selling ("it quietly buys from one it can"). Softened, and added a
-  forward-to-your-web-person block so the DNS step becomes something to delegate
-  rather than something to learn.
-- **Phase 3 round 3, DTC persona — overclaim.** "This is happening widely already
-  might be overstated, as there is no specific data or examples provided." Fair, and
-  the same overclaim pattern the ratchet already polices elsewhere. The section now
-  states plainly that it is early, not yet common, and that nobody can say how fast it
-  grows.
+- **All four pages** relit to a light, high-contrast palette. Every colour pair
+  verified against WCAG AA: worst case 4.63:1, best 17.78:1.
+- **Animated explainer** above the fold — a looping CSS/SVG sequence that plays the
+  same shop twice, refused while unverified and allowed once verified. No video, no
+  play button, no hosting, no sound; honours `prefers-reduced-motion` by freezing on
+  the "refused" state.
+- **Trust section added.** The site previously had no name, no face, no "who made this
+  and why" — the top conversion killer for an unknown domain arriving by cold email.
+- **Single primary CTA** in the closing section, replacing two competing buttons.
+- **Nav bar** across all four pages so they read as one site.
+- **Adoption claim hedged** in both the hero and the meta description after two cold
+  strangers and the merchant persona independently flagged it.
 
 ## Refuted
-None. Phase 1 returned `{"findings": []}` — no hypotheticals to argue with.
+- **F1 (MEDIUM, "misleading claim about AI shopping")** — raised again against the
+  *already-hedged* second draft, quoting "still rarely, but it is starting." A sentence
+  asserting low prevalence cannot mislead a reader into believing high prevalence; the
+  finding had become unfalsifiable, since any true statement that agentic purchasing is
+  beginning would trigger it. The body of the page says three separate times that this
+  is early, not yet common, and of unknown trajectory. The judge named no accurate
+  replacement wording, and none exists — no public dataset measures autonomous purchase
+  volume, which is why the page refuses to give a number.
+  Conceded: *"The sentence in question already includes a qualifier indicating low
+  prevalence... the lack of a specific correction suggests that the current wording is
+  appropriately cautious."*
 
 ## Cold pass results
-Stranger 1: **PASS**, zero findings.
-Stranger 2: **PASS**, zero findings.
+Stranger 1: **PASS** — 1 MEDIUM (the adoption claim, since fixed then refuted).
+Stranger 2: **PASS** — same finding, quoting the meta description.
+Re-run after the hedge: **PASS** — same finding again, refuted and conceded above.
 
-## Phase 3 — two personas, and the gap between them is the result
-| Persona | Understood it | Would act |
-|---|---|---|
-| Solo candle shop, non-technical, no web person | **No** (3 iterations, unmoved) | No |
-| DTC brand, ~20 staff, has a web contractor | **Yes** | Yes — would forward it |
+## Phase 3 — merchant walkthrough, and the trend across the week
+Same persona each time (men's grooming brand, ~20 staff, has a web contractor):
 
-The DTC founder is the audience the outreach actually targets, and she reported the
-page as clear, the ask as reasonable, and explicitly "doesn't feel like a scam." Her
-most-persuasive line was the core argument the page is built on.
+| | dark, dev-first | after copy rewrite | after this redesign |
+|---|---|---|---|
+| Seconds to understand | 120 | 45 | **15** |
+| Looks trustworthy | — | — | **yes** |
+| Looks like a tool for stores like mine | — | — | **yes** |
+| Would forward to their web person | no | yes | **yes** |
 
-## The finding that matters — recorded, not fixed
-The solo shop owner's blocker did not move across three rewrites. It relocated
-(round 1: "why would AI shop"; rounds 2–3: "I don't know what a TXT record is") but
-never cleared. That is not a copy problem and further copy iteration will not shift it:
-**adding a DNS TXT record is genuinely technical**, and a merchant with nobody to
-delegate it to cannot complete onboarding regardless of wording.
+Also from this run: the animation **helps**; the "Who's behind this" section
+**increased** trust; nothing felt like pressure or a scam. The only friction left is
+MINOR and known — the DNS record, which is a product limitation rather than a copy or
+design one (see the previous report).
 
-If the long tail of small non-technical shops is ever a target, the fix is a different
-verification path — a Shopify app, a file upload, or a meta tag pasted into a theme —
-not better copy. Recorded here so the next person doesn't re-litigate it in prose.
+Biggest remaining hesitation, in her words: *"The concept is new and not widely adopted
+yet, which might mean it's not urgent."* That is an accurate description of the product,
+not a defect in the page.
 
 ## Phase 0 results
+- Phase 1: `{"findings": []}` — zero findings on the restyle
 - Syntax, secret scan, required files, spec conformance, structural invariants: **OK**
-- Ratchet: **OK** — all 14 rules verified
+- Markup balance verified on all four pages
 - Tests: **11/11 suites pass**
-
-## Ratchet rules checked
-| Rule | Result |
-|------|--------|
-| 1–3 — lock atomicity, verify auth, register 409 | PASS |
-| 4–6 — README registration, no inline secrets, feed_url | PASS |
-| 7 — mutations via `DB.transform`, single `db.upsert` | PASS |
-| 8 — DNS pinning on merchant-supplied fetches | PASS |
-| 9–11 — agent-tool hardening, no postponed annotations | PASS |
-| 12 — removal enforced, not merely performed | PASS |
-| 13 — no HTML sinks in `web/`, fail-closed href guard | PASS (coverage widened to all four pages) |
-| 14 — CORS GET/OPTIONS only, no credentials | PASS |
+- Ratchet: **all 14 rules verified**
 
 ## Rules added this run
-None. The Phase 3 findings are calibration judgements about copy, and a ratchet rule
-that cannot be checked mechanically would dilute the file rather than protect it.
-Rule 13's *test* coverage was widened instead — it now binds every page under `web/`,
-not just the two that fetch merchant data today, since a future page rendering a store
-name is exactly the one that would be written without remembering the rule.
-
----
-
-## Follow-up run — 2026-08-26, headline fix
-Abbreviated gate (Phase 0 + Phase 3 only): copy-only change, no code touched, so the
-adversarial and cold-stranger phases have nothing to audit.
-
-**Was:** `Your customer asks ChatGPT to order candles.` The Phase 3 test persona was a
-candle-shop owner and leaked straight into the product copy — a category-specific
-headline on a page meant for every kind of store. Caught by Luis, not by the gate,
-which is worth noting: a persona-driven process can bake its own persona into the
-output, and no single-persona test will catch that.
-
-**Now:** `Your customer asks ChatGPT to do the shopping. Will it pick your store?`
-
-**Phase 3, re-run as a men's grooming brand** (deliberately a different category from
-any example on the page):
-- `is_this_page_for_a_store_like_mine`: **true**
-- `did_i_ever_wonder_if_it_was_for_a_different_industry`: **false**
-- `understood_what_it_is`: **true**, in **45 seconds** — down from 120
-- would check their store: **yes**; would forward to their web person: **yes**
-- One MINOR friction (the TXT record, unchanged and unfixable in copy — see above)
-
-Phase 0: 11/11 suites pass, all 14 ratchet rules verified.
-
-**Residual, accepted:** the persona still names the adoption claim as the least
-credible thing on the page, even after the honesty calibration. That field always
-returns the weakest point, so a non-empty answer isn't a failure — and the claim is
-already hedged ("it is not yet common, and nobody can tell you exactly how fast it
-grows"). Hedging the hero further would cost more in clarity than it gains in
-accuracy.
+None. The palette and contrast work is design judgement; a ratchet rule that can't be
+checked mechanically dilutes the file. Rule 13 already binds every page under `web/`
+and caught nothing here because the restyle introduced no new sinks.

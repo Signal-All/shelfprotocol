@@ -4,112 +4,221 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Shelf Protocol — tell AI shoppers the rules of your store</title>
-<meta name="description" content="AI assistants are starting to buy things for people. Shelf Protocol is how your store tells them whether they're allowed, and how much they can spend. Free, about five minutes.">
+<meta name="description" content="AI assistants are beginning to place orders for people — still rarely, but it is starting. Shelf Protocol is how your store tells them whether they are allowed to buy, and how much they may spend. Free, about five minutes.">
 <style>
   :root{
-    --bg:#0a0e1a; --panel:#121829; --ink:#e7ecf5; --mut:#8b97b0;
-    --acc:#5b8cff; --acc2:#37e0a6; --warn:#ffb454; --bad:#ff6b6b;
-    --line:#222b42; --code:#0d1424;
+    --bg:#ffffff; --soft:#f6f7f9; --panel:#ffffff;
+    --ink:#15181e; --mut:#5c6573; --line:#e3e6eb;
+    --acc:#2456d6; --acc-soft:#eef3ff;
+    --good:#0a7d55; --good-soft:#e8f6f0;
+    --bad:#c2352c; --bad-soft:#fdeeed;
+    --shadow:0 1px 2px rgba(20,24,32,.05), 0 8px 24px rgba(20,24,32,.05);
   }
   *{box-sizing:border-box}
-  body{margin:0;font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:radial-gradient(1200px 600px at 70% -10%,#16203a 0,var(--bg) 60%);color:var(--ink)}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:17px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
   a{color:var(--acc)}
-  header{padding:80px 0 44px;text-align:center}
-  .badge{display:inline-block;font-size:13px;letter-spacing:.08em;text-transform:uppercase;
-    color:var(--acc2);border:1px solid var(--line);border-radius:999px;padding:6px 14px;margin-bottom:24px}
-  h1{font-size:50px;line-height:1.06;margin:0 0 18px;letter-spacing:-1.4px}
-  h1 .grad{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;
-    background-clip:text;color:transparent}
-  .sub{font-size:20px;color:var(--mut);max-width:660px;margin:0 auto 30px}
-  section{padding:52px 0;border-top:1px solid var(--line)}
-  h2{font-size:30px;letter-spacing:-.6px;margin:0 0 10px}
-  .lede{color:var(--mut);font-size:17px;margin:0 0 26px;max-width:660px}
-  .big{font-size:19px;line-height:1.7;max-width:680px}
-  .big strong{color:var(--acc2)}
 
-  .check{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px}
+  .top{border-bottom:1px solid var(--line);background:var(--bg)}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .logo{font-weight:700;font-size:17px;letter-spacing:-.2px;text-decoration:none;color:var(--ink)}
+  .logo span{color:var(--acc)}
+  .top nav a{color:var(--mut);text-decoration:none;font-size:15px;margin-left:22px}
+  .top nav a:hover{color:var(--ink)}
+
+  header{padding:64px 0 8px;text-align:center}
+  .pill{display:inline-block;font-size:13px;font-weight:600;color:var(--good);
+    background:var(--good-soft);border-radius:999px;padding:6px 14px;margin-bottom:22px}
+  h1{font-size:44px;line-height:1.12;margin:0 0 16px;letter-spacing:-1.1px;font-weight:700}
+  .sub{font-size:19px;color:var(--mut);max-width:620px;margin:0 auto 28px}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center}
+  .btn{display:inline-block;padding:14px 26px;border-radius:10px;text-decoration:none;
+    font-weight:600;font-size:16px;border:1px solid transparent}
+  .btn.primary{background:var(--acc);color:#fff;box-shadow:var(--shadow)}
+  .btn.primary:hover{background:#1d47b4}
+  .btn.quiet{color:var(--mut);text-decoration:underline;text-underline-offset:3px;padding:14px 4px}
+  .under{color:var(--mut);font-size:14px;margin:16px 0 0}
+
+  .explainer{margin:36px 0 0;background:var(--soft);border:1px solid var(--line);
+    border-radius:16px;padding:20px 20px 14px}
+  .explainer figcaption{color:var(--mut);font-size:14px;text-align:center;margin-top:10px}
+  svg{max-width:100%;height:auto;display:block;margin:0 auto}
+
+  @keyframes travel{
+     0%{opacity:0;transform:translateX(0)}
+     4%{opacity:1}
+    18%{opacity:1;transform:translateX(150px)}
+    22%{opacity:0;transform:translateX(150px)}
+   100%{opacity:0}
+  }
+  @keyframes travel2{
+     0%{opacity:0}  50%{opacity:0;transform:translateX(0)}
+    54%{opacity:1}
+    68%{opacity:1;transform:translateX(150px)}
+    72%{opacity:0;transform:translateX(150px)}
+   100%{opacity:0}
+  }
+  @keyframes showRefuse{ 0%,24%{opacity:0} 30%,46%{opacity:1} 50%,100%{opacity:0} }
+  @keyframes showAllow{ 0%,74%{opacity:0} 80%,96%{opacity:1} 100%{opacity:0} }
+  @keyframes showUnverified{ 0%{opacity:0} 6%,48%{opacity:1} 52%,100%{opacity:0} }
+  @keyframes showVerified{ 0%,52%{opacity:0} 58%,98%{opacity:1} 100%{opacity:0} }
+  .pkt{animation:travel 14s linear infinite}
+  .pkt2{animation:travel2 14s linear infinite}
+  .refuse{animation:showRefuse 14s linear infinite}
+  .allow{animation:showAllow 14s linear infinite}
+  .badge-un{animation:showUnverified 14s linear infinite}
+  .badge-ok{animation:showVerified 14s linear infinite}
+  @media (prefers-reduced-motion: reduce){
+    .pkt,.pkt2,.refuse,.allow,.badge-un,.badge-ok{animation:none}
+    .pkt2,.allow,.badge-ok{opacity:0}
+    .pkt,.refuse,.badge-un{opacity:1}
+  }
+
+  section{padding:56px 0;border-top:1px solid var(--line)}
+  h2{font-size:28px;letter-spacing:-.5px;margin:0 0 12px;font-weight:700}
+  .lede{color:var(--mut);margin:0 0 26px;max-width:620px}
+  p{max-width:640px}
+  .big{font-size:18px;line-height:1.7;max-width:640px}
+  .big strong{color:var(--ink);font-weight:650}
+
+  .check{background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:24px}
   .check form{display:flex;gap:10px;flex-wrap:wrap;margin:0}
-  .check input{flex:1;min-width:220px;padding:14px 16px;border-radius:11px;border:1px solid var(--line);
-    background:var(--code);color:var(--ink);font-size:16px;font-family:inherit}
-  .check input:focus{outline:none;border-color:var(--acc)}
-  .check button{padding:14px 24px;border-radius:11px;border:0;background:var(--acc);color:#07101f;
-    font-weight:700;font-size:16px;cursor:pointer;font-family:inherit}
-  .check .hint{color:var(--mut);font-size:14px;margin:12px 0 0}
-  .check .err{color:var(--warn);font-size:14px;margin:12px 0 0;min-height:1px}
+  .check input{flex:1;min-width:220px;padding:14px 16px;border-radius:10px;
+    border:1px solid var(--line);background:#fff;color:var(--ink);font-size:16px;font-family:inherit}
+  .check input:focus{outline:2px solid var(--acc-soft);border-color:var(--acc)}
+  .check button{padding:14px 26px;border-radius:10px;border:0;background:var(--acc);color:#fff;
+    font-weight:600;font-size:16px;cursor:pointer;font-family:inherit}
+  .check button:hover{background:#1d47b4}
+  .hint{color:var(--mut);font-size:14px;margin:12px 0 0}
+  .err{color:var(--bad);font-size:14px;margin:12px 0 0;min-height:1px}
 
-  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:8px}
-  .step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px}
-  .step .n{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;
-    border-radius:999px;background:var(--acc);color:#07101f;font-weight:800;font-size:15px;margin-bottom:12px}
-  .step h3{margin:0 0 8px;font-size:18px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;
+    box-shadow:var(--shadow)}
+  .step .n{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;
+    border-radius:999px;background:var(--acc-soft);color:var(--acc);font-weight:700;font-size:14px;
+    margin-bottom:12px}
+  .step h3{margin:0 0 8px;font-size:17px}
   .step p{margin:0;color:var(--mut);font-size:15px}
 
-  .dns{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-  .dns .bar{padding:12px 18px;border-bottom:1px solid var(--line);color:var(--mut);font-size:13px;
-    text-transform:uppercase;letter-spacing:.08em}
-  .dns table{width:100%;border-collapse:collapse}
-  .dns th{padding:12px 18px;text-align:left;color:var(--mut);font-size:12px;font-weight:600;
-    text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);width:22%}
-  .dns td{padding:14px 18px;border-bottom:1px solid var(--line);
-    font:14px/1.5 "SF Mono",Menlo,Consolas,monospace;color:#cfe0ff;word-break:break-all}
-  .dns tr:last-child td,.dns tr:last-child th{border-bottom:0}
-  .dim{color:#8b97b0}
-
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px}
-  .card h3{margin:0 0 8px;font-size:17px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;
+    box-shadow:var(--shadow)}
+  .card h3{margin:0 0 8px;font-size:16px}
   .card p{margin:0;color:var(--mut);font-size:15px}
 
-  .btn{display:inline-block;padding:14px 24px;border-radius:11px;text-decoration:none;font-weight:600}
-  .btn.primary{background:var(--acc);color:#07101f}
-  .btn.ghost{border:1px solid var(--line);color:var(--ink)}
-  .cta{display:inline-flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  .dns{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);
+    box-shadow:var(--shadow)}
+  .dns .bar{padding:12px 18px;border-bottom:1px solid var(--line);color:var(--mut);
+    font-size:12px;text-transform:uppercase;letter-spacing:.07em;font-weight:600;background:var(--soft)}
+  .dns table{width:100%;border-collapse:collapse}
+  .dns th{padding:13px 18px;text-align:left;color:var(--mut);font-size:12px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);width:20%}
+  .dns td{padding:13px 18px;border-bottom:1px solid var(--line);
+    font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all}
+  .dns tr:last-child td,.dns tr:last-child th{border-bottom:0}
+  .dim{color:var(--mut)}
+
+  .forward{background:var(--acc-soft);border:1px solid #d3e0fb;border-radius:14px;padding:20px 22px;
+    margin-top:18px}
+  .forward h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--acc)}
+  .forward p{margin:0;font-size:16px;line-height:1.7}
+
+  .who{display:flex;gap:20px;align-items:flex-start;background:var(--soft);
+    border:1px solid var(--line);border-radius:16px;padding:24px}
+  .who .init{flex:0 0 54px;height:54px;border-radius:999px;background:var(--acc);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px}
+  .who p{margin:0 0 12px}
+  .who p:last-child{margin-bottom:0}
+  .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
+  .fact{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel)}
+  .fact b{display:block;font-size:15px;margin-bottom:4px}
+  .fact span{color:var(--mut);font-size:14px}
+
+  footer{padding:44px 0 72px;color:var(--mut);font-size:14px;border-top:1px solid var(--line)}
+  footer a{color:var(--mut)}
   .center{text-align:center}
   .center .lede{margin-left:auto;margin-right:auto}
 
-  figure{margin:0}
-  figcaption{color:var(--mut);font-size:14px;margin-top:12px;text-align:center}
-  svg{max-width:100%;height:auto;display:block}
-
-  footer{padding:50px 0 80px;color:var(--mut);text-align:center;font-size:14px;border-top:1px solid var(--line)}
   @media(max-width:760px){
-    .grid,.steps{grid-template-columns:1fr}
-    h1{font-size:34px}h2{font-size:24px}.sub{font-size:18px}
+    body{font-size:16px}
+    .grid,.steps,.facts{grid-template-columns:1fr}
+    h1{font-size:31px}h2{font-size:23px}.sub{font-size:17px}
+    .top nav a{margin-left:14px;font-size:14px}
+    .who{flex-direction:column;gap:14px}
   }
 </style>
 </head>
 <body>
+
+<div class="top">
+  <div class="wrap">
+    <a class="logo" href="/">Shelf<span>Protocol</span></a>
+    <nav>
+      <a href="/registry/">Listed shops</a>
+      <a href="/developers/">Developers</a>
+    </nav>
+  </div>
+</div>
+
 <div class="wrap">
 
   <header>
-    <div class="badge">Free · about five minutes</div>
-    <h1>Your customer asks ChatGPT to do the shopping.<br><span class="grad">Will it pick your store?</span></h1>
-    <p class="sub">Before an AI spends someone's money, it tries to confirm the shop is real and
-    not a copy. Right now there's no way for it to confirm yours — so this is about giving it
-    one. It's free, and it doesn't change anything your customers see.</p>
+    <div class="pill">Free · about five minutes · nothing to install</div>
+    <h1>Your customer asks ChatGPT to do the shopping.<br>Will it pick your store?</h1>
+    <p class="sub">It's still rare — but when an AI does spend someone's money, it first tries to
+    confirm the shop is real and not a copy. Right now there's no way for it to confirm yours.</p>
     <div class="cta">
-      <a class="btn primary" href="#check">See what AI sees about your store</a>
-      <a class="btn ghost" href="#why">Wait, is this really happening?</a>
+      <a class="btn primary" href="#check">See what AI sees about my store</a>
+      <a class="btn quiet" href="#why">Is this really happening?</a>
     </div>
-  </header>
+    <p class="under">No sign-up. Nothing changes on your website.</p>
 
-  <section id="why">
-    <h2>Is this really happening?</h2>
-    <p class="big">It's early — and worth being straight with you about how early. People already
-    ask ChatGPT to find them a gift, tell Alexa to reorder something, or let an app pick a brand
-    for them. What's changing is the last step: assistants are starting to
-    <strong>place the order themselves</strong>, without a person clicking Buy. That part is new,
-    it is not yet common, and <strong>nobody can tell you exactly how fast it grows.</strong></p>
-    <p class="big" style="margin-top:18px">That creates a problem nobody had before. A person can
-    look at a website and tell it's the real shop. Software can't. And a fake copy of a store is
-    cheap to make. So a careful assistant does the same thing you'd do with a stranger asking for
-    your card details — <strong>it plays it safe and skips the shop it can't confirm.</strong>
-    Nothing to do with the quality of your store; it simply has no way to check.</p>
-    <p class="big" style="margin-top:18px">This page is about giving it a way to say yes to you —
-    before that matters, rather than after.</p>
-  </section>
+    <figure class="explainer">
+      <svg viewBox="0 0 760 190" role="img" aria-label="An AI assistant is asked to buy from a store. It checks Shelf Protocol. When the shop is unverified, the assistant cannot confirm it is real and buys somewhere else. When the shop has verified itself and set a limit, the order goes through.">
+        <rect x="8" y="62" width="150" height="66" rx="12" fill="#f6f7f9" stroke="#e3e6eb"/>
+        <text x="83" y="90" text-anchor="middle" font-size="14" font-weight="600" fill="#15181e" font-family="sans-serif">AI assistant</text>
+        <text x="83" y="110" text-anchor="middle" font-size="12.5" fill="#5c6573" font-family="sans-serif">ready to buy</text>
+
+        <rect x="305" y="54" width="150" height="82" rx="12" fill="#eef3ff" stroke="#2456d6"/>
+        <text x="380" y="82" text-anchor="middle" font-size="14" font-weight="700" fill="#2456d6" font-family="sans-serif">Shelf Protocol</text>
+        <text x="380" y="102" text-anchor="middle" font-size="12.5" fill="#5c6573" font-family="sans-serif">Is this shop real?</text>
+        <text x="380" y="120" text-anchor="middle" font-size="12.5" fill="#5c6573" font-family="sans-serif">What are its rules?</text>
+
+        <rect x="602" y="62" width="150" height="66" rx="12" fill="#f6f7f9" stroke="#e3e6eb"/>
+        <text x="677" y="88" text-anchor="middle" font-size="14" font-weight="600" fill="#15181e" font-family="sans-serif">Your store</text>
+        <g class="badge-un">
+          <rect x="628" y="98" width="98" height="20" rx="10" fill="#fdeeed"/>
+          <text x="677" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#c2352c" font-family="sans-serif">UNVERIFIED</text>
+        </g>
+        <g class="badge-ok">
+          <rect x="628" y="98" width="98" height="20" rx="10" fill="#e8f6f0"/>
+          <text x="677" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#0a7d55" font-family="sans-serif">VERIFIED</text>
+        </g>
+
+        <line x1="162" y1="95" x2="300" y2="95" stroke="#e3e6eb" stroke-width="2"/>
+        <line x1="460" y1="95" x2="598" y2="95" stroke="#e3e6eb" stroke-width="2"/>
+
+        <circle class="pkt" cx="172" cy="95" r="6" fill="#2456d6"/>
+        <circle class="pkt2" cx="172" cy="95" r="6" fill="#2456d6"/>
+
+        <g class="refuse">
+          <rect x="500" y="140" width="252" height="42" rx="10" fill="#fdeeed" stroke="#f3c9c6"/>
+          <text x="626" y="158" text-anchor="middle" font-size="12.5" font-weight="700" fill="#c2352c" font-family="sans-serif">Can't confirm the shop is real</text>
+          <text x="626" y="174" text-anchor="middle" font-size="12.5" fill="#8a423d" font-family="sans-serif">It buys somewhere else</text>
+        </g>
+        <g class="allow">
+          <rect x="500" y="140" width="252" height="42" rx="10" fill="#e8f6f0" stroke="#bfe4d5"/>
+          <text x="626" y="158" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0a7d55" font-family="sans-serif">Real shop, limit set by you</text>
+          <text x="626" y="174" text-anchor="middle" font-size="12.5" fill="#3d6b5a" font-family="sans-serif">The order goes through</text>
+        </g>
+      </svg>
+      <figcaption>The same shop, before and after. It takes a fraction of a second and nobody is watching it happen.</figcaption>
+    </figure>
+  </header>
 
   <section id="check">
     <h2>Start here</h2>
@@ -126,65 +235,20 @@
     </div>
   </section>
 
-  <section id="how">
-    <h2>What that looks like</h2>
-    <p class="lede">Here's the moment that decides whether you get the sale. It takes a fraction
-    of a second and nobody is watching it happen.</p>
-
-    <figure>
-      <svg viewBox="0 0 900 300" role="img" aria-label="A customer asks an AI assistant to order coffee. The assistant checks Shelf Protocol to find out whether the store is real and what its rules are. If the store has verified itself and set a limit, the assistant buys within that limit. If not, the assistant cannot tell the store from a fake and goes elsewhere.">
-        <defs>
-          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0 0 L10 5 L0 10 z" fill="#5b8cff"/>
-          </marker>
-          <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0 0 L10 5 L0 10 z" fill="#37e0a6"/>
-          </marker>
-          <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-            <path d="M0 0 L10 5 L0 10 z" fill="#ff6b6b"/>
-          </marker>
-        </defs>
-
-        <rect x="10" y="112" width="150" height="76" rx="12" fill="#121829" stroke="#222b42"/>
-        <text x="85" y="142" text-anchor="middle" fill="#e7ecf5" font-size="15" font-weight="600" font-family="sans-serif">Your customer</text>
-        <text x="85" y="164" text-anchor="middle" fill="#8b97b0" font-size="13" font-family="sans-serif">"order more coffee"</text>
-
-        <line x1="164" y1="150" x2="216" y2="150" stroke="#5b8cff" stroke-width="2" marker-end="url(#ar)"/>
-
-        <rect x="222" y="112" width="150" height="76" rx="12" fill="#121829" stroke="#222b42"/>
-        <text x="297" y="142" text-anchor="middle" fill="#e7ecf5" font-size="15" font-weight="600" font-family="sans-serif">AI assistant</text>
-        <text x="297" y="164" text-anchor="middle" fill="#8b97b0" font-size="13" font-family="sans-serif">about to spend money</text>
-
-        <line x1="376" y1="150" x2="428" y2="150" stroke="#5b8cff" stroke-width="2" marker-end="url(#ar)"/>
-
-        <rect x="434" y="104" width="164" height="92" rx="12" fill="#121829" stroke="#5b8cff"/>
-        <text x="516" y="134" text-anchor="middle" fill="#5b8cff" font-size="15" font-weight="700" font-family="sans-serif">Shelf Protocol</text>
-        <text x="516" y="156" text-anchor="middle" fill="#8b97b0" font-size="13" font-family="sans-serif">Is this store real?</text>
-        <text x="516" y="174" text-anchor="middle" fill="#8b97b0" font-size="13" font-family="sans-serif">What are its rules?</text>
-
-        <path d="M602 132 L660 84" stroke="#37e0a6" stroke-width="2" fill="none" marker-end="url(#ar2)"/>
-        <path d="M602 168 L660 216" stroke="#ff6b6b" stroke-width="2" fill="none" marker-end="url(#ar3)"/>
-
-        <rect x="666" y="34" width="224" height="86" rx="12" fill="#121829" stroke="#37e0a6"/>
-        <text x="778" y="62" text-anchor="middle" fill="#37e0a6" font-size="13" font-weight="700" font-family="sans-serif">YOU'VE SET YOUR RULES</text>
-        <text x="778" y="84" text-anchor="middle" fill="#e7ecf5" font-size="14" font-family="sans-serif">It buys from you,</text>
-        <text x="778" y="103" text-anchor="middle" fill="#e7ecf5" font-size="14" font-family="sans-serif">within your limit.</text>
-
-        <rect x="666" y="184" width="224" height="86" rx="12" fill="#121829" stroke="#ff6b6b"/>
-        <text x="778" y="212" text-anchor="middle" fill="#ff6b6b" font-size="13" font-weight="700" font-family="sans-serif">YOU HAVEN'T</text>
-        <text x="778" y="234" text-anchor="middle" fill="#e7ecf5" font-size="14" font-family="sans-serif">It can't tell you apart</text>
-        <text x="778" y="253" text-anchor="middle" fill="#e7ecf5" font-size="14" font-family="sans-serif">from a fake. It walks.</text>
-      </svg>
-      <figcaption>The assistant makes this call in a fraction of a second, with no human watching.</figcaption>
-    </figure>
-  </section>
-
-  <section>
-    <h2>Why this matters to you</h2>
-    <p class="big">A careful AI assistant won't buy from a store it can't confirm is real —
-    because copying a store's website is easy, and spending a customer's money at a fake one is
-    the worst mistake it can make. <strong>So it does the safe thing and goes somewhere else.</strong>
-    Not because your store did anything wrong. Because it had no way to check.</p>
+  <section id="why">
+    <h2>Is this really happening?</h2>
+    <p class="big">It's early — and worth being straight with you about how early. People already
+    ask ChatGPT to find them a gift, tell Alexa to reorder something, or let an app pick a brand
+    for them. What's changing is the last step: assistants are starting to
+    <strong>place the order themselves</strong>, without a person clicking Buy. That part is new,
+    it is not yet common, and <strong>nobody can tell you exactly how fast it grows.</strong></p>
+    <p class="big" style="margin-top:18px">But it creates a problem nobody had before. A person
+    can look at a website and tell it's the real shop. Software can't. And a fake copy of a store
+    is cheap to make. So a careful assistant does what you'd do with a stranger asking for your
+    card details — <strong>it plays it safe and skips the shop it can't confirm.</strong> Nothing
+    to do with the quality of your store. It simply has no way to check.</p>
+    <p class="big" style="margin-top:18px">This is about giving it a way to say yes to you —
+    before that matters, rather than after.</p>
   </section>
 
   <section>
@@ -214,8 +278,7 @@
 
   <section>
     <h2>Step 1, in real life</h2>
-    <p class="lede"><strong>This is the only technical bit on the whole page.</strong> It's the
-    same kind of setting you (or whoever set up your site) used to make your email work. You paste
+    <p class="lede"><strong>This is the only technical bit on the whole page.</strong> You paste
     two short lines into wherever your web address lives — Shopify, GoDaddy, Namecheap,
     Squarespace — and that's the end of it.</p>
     <div class="dns">
@@ -226,17 +289,14 @@
         <tr><th>Value</th><td>shelfprotocol-verify=<span class="dim">(we give you this part)</span></td></tr>
       </table>
     </div>
-    <p class="lede" style="margin-top:20px">If that means nothing to you, that is completely
+    <p class="lede" style="margin-top:22px">If that means nothing to you, that is completely
     normal and you do not need to learn it. This is a job for whoever looks after your website —
-    or, if that's nobody, for your website provider's support chat, who do it every day.</p>
-
-    <div class="check" style="margin-top:8px">
-      <div class="bar" style="padding:0 0 10px;border:0">Not technical? Forward this</div>
-      <p style="margin:0;color:var(--mut);font-size:15px;line-height:1.7">
-        "Hi — can you add a TXT record to our domain for me? The name is
-        <code>_shelfprotocol</code> and I'll send you the value. It's for a store verification
-        thing. It shouldn't affect the website or email."
-      </p>
+    or your provider's support chat, who do it every day.</p>
+    <div class="forward">
+      <h3>Not technical? Forward this</h3>
+      <p>"Hi — can you add a TXT record to our domain for me? The name is
+      <code>_shelfprotocol</code> and I'll send you the value. It's for a store verification
+      thing. It shouldn't affect the website or email."</p>
       <p class="hint">That's the entire request. Most providers do it while you wait.</p>
     </div>
   </section>
@@ -254,6 +314,27 @@
       <div class="card"><h3>Nobody can pretend to be you</h3>
         <p>Once your shop is confirmed as yours, a copycat site can't pass itself off as you to
         an assistant that checks.</p></div>
+    </div>
+  </section>
+
+  <section id="who">
+    <h2>Who's behind this</h2>
+    <div class="who">
+      <div class="init" aria-hidden="true">LR</div>
+      <div>
+        <p>I'm Luis Rivera, and I built Shelf Protocol on my own. I kept running into the same
+        gap: AI assistants are being handed the ability to spend money, and there was no way for
+        a shop to say "yes, but only up to this much" — or for the assistant to check it was
+        talking to the real shop at all.</p>
+        <p>It's early and I'm not pretending otherwise. There's no company behind this, no
+        investors, and nothing to sign up for. If you'd rather not be part of it, say so and
+        I'll take your shop out the same week.</p>
+      </div>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>Free, and open</b><span>The whole thing is public on GitHub — anyone can read exactly what it does.</span></div>
+      <div class="fact"><b>No account, no card</b><span>Nothing to sign up for, nothing to pay. You never give us anything but a DNS record.</span></div>
+      <div class="fact"><b>A real person answers</b><span>Email <a href="mailto:luis@signalall.com">luis@signalall.com</a> and you get me, not a ticket queue.</span></div>
     </div>
   </section>
 
@@ -280,7 +361,6 @@
     <p class="lede">Ten seconds, and you don't have to sign up for anything.</p>
     <div class="cta">
       <a class="btn primary" href="#check">Check my store</a>
-      <a class="btn ghost" href="/registry/">See every listed shop</a>
     </div>
   </section>
 
