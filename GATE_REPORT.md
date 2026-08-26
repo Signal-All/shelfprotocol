@@ -86,3 +86,31 @@ not a defect in the page.
 None. The palette and contrast work is design judgement; a ratchet rule that can't be
 checked mechanically dilutes the file. Rule 13 already binds every page under `web/`
 and caught nothing here because the restyle introduced no new sinks.
+
+---
+
+## Follow-up run — 2026-08-26, warmer palette
+Luis's second design note: **"way too white."** Correct — the first light pass
+overcorrected to near-clinical. Pure `#ffffff` background with `#f6f7f9` panels meant
+nothing separated from anything, so the page read as one flat sheet with hairline rules.
+
+**Fixed:** warm paper background (`#f9f6f1`) with **white** cards that now lift off it —
+the inverse of the previous arrangement, which is what actually creates separation. Warmer
+ink, borders and shadows. A full-width band behind the hero so the page has tonal rhythm
+instead of uniform sections. Darker muted text. Icons on the "What you get" cards to break
+up the text.
+
+Contrast re-verified after every change: worst pair **5.30:1**, all AA. Markup balance
+checked on all four pages; 11/11 suites pass; Phase 1 `{"findings": []}`.
+
+**Design review, two rounds:** not clinical, not one flat sheet, tonal separation present,
+hierarchy works, approachable to a Shopify merchant, closest comparables **Shopify /
+Stripe / Square** — the reference set the redesign was aiming at.
+
+**Limit of the tooling, recorded.** Round 2 returned the *identical* three "improvements"
+as round 1, verbatim, including "add icons" (done in that very round) and "increase
+contrast" (already AA everywhere at ≥5.30:1). The judge is not rendering the page; it is
+pattern-matching on landing-page HTML and emitting generic advice. Its structural booleans
+were stable and useful across runs; its free-text suggestions are not, and iterating
+against them further would be chasing noise. **Visual judgement past this point belongs to
+a human looking at the rendered page.**
