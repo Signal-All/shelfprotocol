@@ -6,10 +6,15 @@ Change under review: light redesign + animated explainer + trust section (`light
 ## VERDICT: PASS
 
 ## Parked deadlocks — HUMAN DECISIONS REQUIRED
-One, flagged not blocked: the site now carries Luis Rivera's name and a first-person
-statement in a "Who's behind this" section. His name and email are already public in
-every commit of the public repo, so this adds no new exposure — but the positioning
-("I built this on my own, no company, no investors") is his to own or veto.
+None. The trust section was first drafted with Luis's name and a first-person statement;
+he vetoed it, so the section now makes the same case from verifiable properties of the
+project (open source and auditable, no account, unconditional removal) with no personal
+identity attached. Re-tested after the change: **no regression** — still 15 seconds to
+understand, still trustworthy, and the section still registers as trust-*increasing*.
+
+His email remains in three places as the removal contact. That is deliberate and
+load-bearing: a removal policy nobody can reach is not a policy. It can be swapped for a
+role address or GitHub issues if he prefers, but it cannot simply be deleted.
 
 ## Context
 Luis's read: the site was "very futuristic and might be too much for a merchant." He
