@@ -20,10 +20,19 @@ import sys
 import common  # noqa: F401
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Every page under web/ is covered by the structural checks — Ratchet Rule 13 binds
+# the whole directory, not just the two pages that happen to fetch merchant data
+# today. A future page that renders a store name is exactly the one that would be
+# written without remembering the rule.
 PAGES = {
+    "landing": os.path.join(ROOT, "web", "index.html"),
     "merchant": os.path.join(ROOT, "web", "m", "index.html"),
     "registry": os.path.join(ROOT, "web", "registry", "index.html"),
+    "developers": os.path.join(ROOT, "web", "developers", "index.html"),
 }
+# Only these two read the registry at runtime.
+API_PAGES = {k: PAGES[k] for k in ("merchant", "registry")}
 
 
 class Balanced(html.parser.HTMLParser):
@@ -70,7 +79,9 @@ print("PASS: neither page contains an HTML-injection sink (innerHTML, document.w
 # --- the merchant page must route every merchant-supplied link through the guard ---
 merchant_src = open(PAGES["merchant"], encoding="utf-8").read()
 assert "safeHref(" in merchant_src, "merchant page must have a URL scheme guard"
-hrefs = re.findall(r"\.href\s*=\s*([^;\n]+)", merchant_src)
+hrefs = []
+for name, path in PAGES.items():
+    hrefs += re.findall(r"\.href\s*=\s*([^;\n]+)", open(path, encoding="utf-8").read())
 for h in hrefs:
     h = h.strip()
     ok = (
@@ -79,12 +90,12 @@ for h in hrefs:
         or "encodeURIComponent" in h                     # encoded into a literal
         or h.startswith("API")
     )
-    assert ok, f"merchant page assigns an unguarded href: {h!r}"
-print("PASS: every href on the merchant page is a literal or passes the scheme guard")
+    assert ok, f"a page assigns an unguarded href: {h!r}"
+print("PASS: every href across all pages is a literal, encoded, or passes the scheme guard")
 
 
-# --- both pages must talk to the real registry in production ---
-for name, path in PAGES.items():
+# --- the data-fetching pages must talk to the real registry in production ---
+for name, path in API_PAGES.items():
     src = open(path, encoding="utf-8").read()
     assert "https://api.shelfprotocol.com" in src, f"{name}: production API base missing"
     assert "http://localhost:8080" in src, f"{name}: local dev fallback missing"
@@ -162,6 +173,42 @@ if shutil.which("node"):
     failures = json.loads(res.stdout.strip())
     assert not failures, f"getDomain mishandled: {failures}"
     print("PASS: getDomain normalizes real domains and rejects script/junk input")
+
+# --- the landing page's store-address box is a user-input surface too ---
+if shutil.which("node"):
+    landing_src = open(PAGES["landing"], encoding="utf-8").read()
+    m = re.search(r'var d = \(input\.value.*?\n    \}', landing_src, re.S)
+    assert m, "could not extract the landing page's domain handling"
+    # The extracted block ends with a bare `return;` on the reject path, so give
+    # that path an explicit value and fall through to ACCEPT.
+    body = (m.group(0)
+            .replace("input.value", "INPUT")
+            .replace("err.textContent =", "ERR =")
+            .replace("return;", "return 'REJECT';"))
+    harness = (
+        "let INPUT, ERR;\nfunction attempt(v){ INPUT = v; ERR = null;\n"
+        + body
+        + "\n return 'ACCEPT'; }\n"
+        "const cases = " + json.dumps([
+            ["yourstore.com", "ACCEPT"],
+            ["https://www.yourstore.com/products/x", "ACCEPT"],
+            ["  GFUEL.COM  ", "ACCEPT"],
+            ["<script>alert(1)</script>", "REJECT"],
+            ["javascript:alert(1)", "REJECT"],
+            ["../../etc/passwd", "REJECT"],
+            ["notadomain", "REJECT"],
+            ["", "REJECT"],
+        ]) + ";\n"
+        "let bad=[];\nfor (const [v,exp] of cases){ const got = attempt(v); if (got!==exp) bad.push([v,got,exp]); }\n"
+        "console.log(JSON.stringify(bad));\n"
+    )
+    res = subprocess.run([shutil.which("node"), "-e", harness],
+                         capture_output=True, text=True, timeout=60)
+    assert res.returncode == 0, res.stderr
+    failures = json.loads(res.stdout.strip())
+    assert not failures, f"landing page domain box mishandled: {failures}"
+    print("PASS: the landing page's store-address box accepts real domains and rejects junk")
+
 
 # --- the API must keep returning the shape the pages read ---
 # If an endpoint's response shape changes, these pages break silently in a
