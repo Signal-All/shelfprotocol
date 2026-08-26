@@ -87,3 +87,34 @@ that cannot be checked mechanically would dilute the file rather than protect it
 Rule 13's *test* coverage was widened instead — it now binds every page under `web/`,
 not just the two that fetch merchant data today, since a future page rendering a store
 name is exactly the one that would be written without remembering the rule.
+
+---
+
+## Follow-up run — 2026-08-26, headline fix
+Abbreviated gate (Phase 0 + Phase 3 only): copy-only change, no code touched, so the
+adversarial and cold-stranger phases have nothing to audit.
+
+**Was:** `Your customer asks ChatGPT to order candles.` The Phase 3 test persona was a
+candle-shop owner and leaked straight into the product copy — a category-specific
+headline on a page meant for every kind of store. Caught by Luis, not by the gate,
+which is worth noting: a persona-driven process can bake its own persona into the
+output, and no single-persona test will catch that.
+
+**Now:** `Your customer asks ChatGPT to do the shopping. Will it pick your store?`
+
+**Phase 3, re-run as a men's grooming brand** (deliberately a different category from
+any example on the page):
+- `is_this_page_for_a_store_like_mine`: **true**
+- `did_i_ever_wonder_if_it_was_for_a_different_industry`: **false**
+- `understood_what_it_is`: **true**, in **45 seconds** — down from 120
+- would check their store: **yes**; would forward to their web person: **yes**
+- One MINOR friction (the TXT record, unchanged and unfixable in copy — see above)
+
+Phase 0: 11/11 suites pass, all 14 ratchet rules verified.
+
+**Residual, accepted:** the persona still names the adoption claim as the least
+credible thing on the page, even after the honesty calibration. That field always
+returns the weakest point, so a non-empty answer isn't a failure — and the claim is
+already hedged ("it is not yet common, and nobody can tell you exactly how fast it
+grows"). Hedging the hero further would cost more in clarity than it gains in
+accuracy.
