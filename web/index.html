@@ -7,12 +7,12 @@
 <meta name="description" content="AI assistants are beginning to place orders for people — still rarely, but it is starting. Shelf Protocol is how your store tells them whether they are allowed to buy, and how much they may spend. Free, about five minutes.">
 <style>
   :root{
-    --bg:#ffffff; --soft:#f6f7f9; --panel:#ffffff;
-    --ink:#15181e; --mut:#5c6573; --line:#e3e6eb;
-    --acc:#2456d6; --acc-soft:#eef3ff;
-    --good:#0a7d55; --good-soft:#e8f6f0;
-    --bad:#c2352c; --bad-soft:#fdeeed;
-    --shadow:0 1px 2px rgba(20,24,32,.05), 0 8px 24px rgba(20,24,32,.05);
+    --bg:#f9f6f1; --soft:#efeae1; --panel:#ffffff;
+    --ink:#1d1a17; --mut:#575049; --line:#e3ddd1;
+    --acc:#2a52c4; --acc-soft:#eaf0fd;
+    --good:#0a6f4c; --good-soft:#e6f4ec;
+    --bad:#b53229; --bad-soft:#fcece9;
+    --shadow:0 1px 2px rgba(60,50,35,.05), 0 6px 18px rgba(60,50,35,.06);
   }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
@@ -29,7 +29,8 @@
   .top nav a{color:var(--mut);text-decoration:none;font-size:15px;margin-left:22px}
   .top nav a:hover{color:var(--ink)}
 
-  header{padding:64px 0 8px;text-align:center}
+  .hero-band{background:var(--soft);border-bottom:1px solid var(--line)}
+  header{padding:60px 0 46px;text-align:center}
   .pill{display:inline-block;font-size:13px;font-weight:600;color:var(--good);
     background:var(--good-soft);border-radius:999px;padding:6px 14px;margin-bottom:22px}
   h1{font-size:44px;line-height:1.12;margin:0 0 16px;letter-spacing:-1.1px;font-weight:700}
@@ -38,12 +39,12 @@
   .btn{display:inline-block;padding:14px 26px;border-radius:10px;text-decoration:none;
     font-weight:600;font-size:16px;border:1px solid transparent}
   .btn.primary{background:var(--acc);color:#fff;box-shadow:var(--shadow)}
-  .btn.primary:hover{background:#1d47b4}
+  .btn.primary:hover{background:#21419e}
   .btn.quiet{color:var(--mut);text-decoration:underline;text-underline-offset:3px;padding:14px 4px}
   .under{color:var(--mut);font-size:14px;margin:16px 0 0}
 
-  .explainer{margin:36px 0 0;background:var(--soft);border:1px solid var(--line);
-    border-radius:16px;padding:20px 20px 14px}
+  .explainer{margin:36px 0 0;background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;padding:20px 20px 14px;box-shadow:var(--shadow)}
   .explainer figcaption{color:var(--mut);font-size:14px;text-align:center;margin-top:10px}
   svg{max-width:100%;height:auto;display:block;margin:0 auto}
 
@@ -78,20 +79,22 @@
   }
 
   section{padding:56px 0;border-top:1px solid var(--line)}
+  section:first-of-type{border-top:0}
   h2{font-size:28px;letter-spacing:-.5px;margin:0 0 12px;font-weight:700}
   .lede{color:var(--mut);margin:0 0 26px;max-width:620px}
   p{max-width:640px}
   .big{font-size:18px;line-height:1.7;max-width:640px}
   .big strong{color:var(--ink);font-weight:650}
 
-  .check{background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:24px}
+  .check{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;
+    box-shadow:var(--shadow)}
   .check form{display:flex;gap:10px;flex-wrap:wrap;margin:0}
   .check input{flex:1;min-width:220px;padding:14px 16px;border-radius:10px;
     border:1px solid var(--line);background:#fff;color:var(--ink);font-size:16px;font-family:inherit}
   .check input:focus{outline:2px solid var(--acc-soft);border-color:var(--acc)}
   .check button{padding:14px 26px;border-radius:10px;border:0;background:var(--acc);color:#fff;
     font-weight:600;font-size:16px;cursor:pointer;font-family:inherit}
-  .check button:hover{background:#1d47b4}
+  .check button:hover{background:#21419e}
   .hint{color:var(--mut);font-size:14px;margin:12px 0 0}
   .err{color:var(--bad);font-size:14px;margin:12px 0 0;min-height:1px}
 
@@ -107,7 +110,8 @@
   .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;
     box-shadow:var(--shadow)}
-  .card h3{margin:0 0 8px;font-size:16px}
+  .card h3{margin:0 0 8px;font-size:16px;display:flex;align-items:center;gap:9px}
+  .card h3 svg{flex:0 0 20px}
   .card p{margin:0;color:var(--mut);font-size:15px}
 
   .dns{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);
@@ -122,13 +126,13 @@
   .dns tr:last-child td,.dns tr:last-child th{border-bottom:0}
   .dim{color:var(--mut)}
 
-  .forward{background:var(--acc-soft);border:1px solid #d3e0fb;border-radius:14px;padding:20px 22px;
+  .forward{background:var(--acc-soft);border:1px solid #d2ddf6;border-radius:14px;padding:20px 22px;
     margin-top:18px}
   .forward h3{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--acc)}
   .forward p{margin:0;font-size:16px;line-height:1.7}
 
-  .who{display:flex;gap:20px;align-items:flex-start;background:var(--soft);
-    border:1px solid var(--line);border-radius:16px;padding:24px}
+  .who{display:flex;gap:20px;align-items:flex-start;background:var(--panel);
+    border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:var(--shadow)}
   .who p{margin:0 0 12px}
   .who p:last-child{margin-bottom:0}
   .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
@@ -162,8 +166,8 @@
   </div>
 </div>
 
+<div class="hero-band">
 <div class="wrap">
-
   <header>
     <div class="pill">Free · about five minutes · nothing to install</div>
     <h1>Your customer asks ChatGPT to do the shopping.<br>Will it pick your store?</h1>
@@ -217,6 +221,10 @@
       <figcaption>The same shop, before and after. It takes a fraction of a second and nobody is watching it happen.</figcaption>
     </figure>
   </header>
+</div>
+</div>
+
+<div class="wrap">
 
   <section id="check">
     <h2>Start here</h2>
@@ -302,14 +310,14 @@
   <section>
     <h2>What you get</h2>
     <div class="grid">
-      <div class="card"><h3>You set the spending limit</h3>
+      <div class="card"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2a52c4" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>You set the spending limit</h3>
         <p>Nothing can be bought automatically until you say so, and never above the number you
         choose. Verifying your store doesn't open the doors — that's a separate decision, and
         it's yours.</p></div>
-      <div class="card"><h3>You control what's visible</h3>
+      <div class="card"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2a52c4" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>You control what's visible</h3>
         <p>Your products, your categories, your checkout method. Or switch AI purchases off
         entirely and still be listed as a real, verified store.</p></div>
-      <div class="card"><h3>Nobody can pretend to be you</h3>
+      <div class="card"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0a6f4c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Nobody can pretend to be you</h3>
         <p>Once your shop is confirmed as yours, a copycat site can't pass itself off as you to
         an assistant that checks.</p></div>
     </div>
